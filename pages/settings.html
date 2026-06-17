@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>System Settings &mdash; PGP Glass Apprentice Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="../assets/css/main.css?v=2.0">
+  <link rel="stylesheet" href="../assets/css/sidebar.css?v=2.0">
+  <link rel="stylesheet" href="../assets/css/components.css?v=2.0">
+  <link rel="stylesheet" href="../assets/css/dashboard.css?v=2.0">
+  <link rel="stylesheet" href="../assets/css/responsive.css?v=2.0">
+</head>
+<body>
+
+<!-- Global Page Loader -->
+<div id="global-page-loader" class="global-page-loader">
+  <div class="loader-content">
+    <div class="loader-logo">P</div>
+    <div class="loader-title">PGP Glass</div>
+    <div class="loader-text">Loading... Please wait</div>
+    <div class="loader-spinner"></div>
+  </div>
+</div>
+
+<div class="app-wrapper">
+  <!-- Sidebar -->
+  <aside class="app-sidebar" id="app-sidebar"></aside>
+
+  <!-- Mobile Overlay -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <!-- Main Viewport -->
+  <main class="app-main" id="app-main">
+    <!-- Top Navigation Header -->
+    <header class="app-topnav" id="app-topnav"></header>
+
+    <!-- Page Content View -->
+    <div class="app-content animate-fadeIn">
+      
+      <!-- Page Header -->
+      <div class="page-header">
+        <div class="page-header-left">
+          <nav class="breadcrumb-custom" aria-label="Breadcrumb">
+            <a href="dashboard.html">Dashboard</a>
+            <span class="sep">/</span>
+            <span>Settings</span>
+          </nav>
+          <h1 class="page-title">Portal Settings</h1>
+          <p class="page-subtitle">Configure theme settings, email alerts preference, and review profile details.</p>
+        </div>
+      </div>
+
+      <!-- Settings Layout Grid -->
+      <div class="settings-layout">
+        
+        <!-- Sidebar Controls -->
+        <div class="settings-sidebar d-flex flex-column gap-4">
+          <!-- Profile Badge -->
+          <div class="profile-card">
+            <div class="profile-avatar" id="set-avatar">SA</div>
+            <div class="profile-name" id="set-name">Super HR Admin</div>
+            <div class="profile-role" id="set-role">Super HR</div>
+            <div class="profile-email" id="set-email">super.hr@pgpglass.com</div>
+          </div>
+
+          <!-- Settings Inner Tab Nav -->
+          <div class="settings-nav">
+            <button class="settings-nav-item active" id="tab-btn-general" onclick="switchSettingsTab('general')"><i class="fas fa-sliders-h"></i> General Preferences</button>
+            <button class="settings-nav-item" id="tab-btn-security" onclick="switchSettingsTab('security')"><i class="fas fa-shield-alt"></i> Security & Credentials</button>
+            <button class="settings-nav-item" id="tab-btn-api" onclick="switchSettingsTab('api')"><i class="fas fa-network-wired"></i> API Connectors</button>
+          </div>
+        </div>
+
+        <!-- Settings Content Card -->
+        <div class="settings-content">
+          
+          <!-- General Panel -->
+          <div id="panel-general" class="settings-panel animate-fadeIn">
+            <h2 class="settings-section-title">General Portal Preferences</h2>
+            <div class="d-flex flex-column gap-3 mb-6">
+              <!-- Settings row 2 -->
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <div class="settings-row-label">Desktop Push Notifications</div>
+                  <div class="settings-row-desc">Enable auto-dismiss toast alerts on missing Contract IDs or Excel errors.</div>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="toggle-notif" checked>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+
+              <!-- Settings row 3 -->
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <div class="settings-row-label">Simulate Auto-Logout</div>
+                  <div class="settings-row-desc">Log out automatically when session stays idle for more than 15 minutes.</div>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="toggle-logout">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+
+              <!-- Settings row 4 -->
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <div class="settings-row-label">Compact Tables View</div>
+                  <div class="settings-row-desc">Minimize table row heights in master apprentice tables to show more data.</div>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="toggle-compact" checked>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Security Panel -->
+          <div id="panel-security" class="settings-panel animate-fadeIn" style="display: none;">
+            <h2 class="settings-section-title">Security & Credentials</h2>
+            <div class="alert-custom alert-info mb-4" style="font-size:13px; padding: 10px 16px;">
+              <div class="alert-icon"><i class="fas fa-info-circle"></i></div>
+              <div class="alert-body">
+                <div class="alert-msg">Single Sign-On and security policies are managed centrally. Corporate logins are verified via pre-authorized employee credentials.</div>
+              </div>
+            </div>
+            <div class="d-flex flex-column gap-3 mb-6">
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <div class="settings-row-label">Corporate Account Authentication</div>
+                  <div class="settings-row-desc">Current session authentication method: <strong>Simple Corporate Credentials Form</strong>.</div>
+                </div>
+                <span class="badge-custom badge-brand">Active</span>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <div class="settings-row-label">Password Policy Status</div>
+                  <div class="settings-row-desc">12-character strong corporate compliance enforcement.</div>
+                </div>
+                <span class="badge-custom badge-success"><i class="fas fa-shield-alt"></i> Compliant</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- API Panel -->
+          <div id="panel-api" class="settings-panel animate-fadeIn" style="display: none;">
+            <h2 class="settings-section-title">Node.js Backend &amp; Google Sheets Database</h2>
+            
+            <div class="alert-custom alert-info mb-4" style="font-size:13px; padding: 10px 16px; background: rgba(5,150,105,0.08); border-color: rgba(5,150,105,0.3);">
+              <div class="alert-icon" style="color:#059669;"><i class="fas fa-check-circle"></i></div>
+              <div class="alert-body">
+                <div class="alert-title" style="color:#059669;">Live Data Mode — Always Active</div>
+                <div class="alert-msg">This portal operates exclusively on the live Google Sheets backend. All data is real — no demo or mock records are used. Start the backend with <code>npm start</code> in the <strong>backend/</strong> folder if not already running.</div>
+              </div>
+            </div>
+
+            <div class="form-group mb-4">
+              <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
+                <span>Live Backend Database Connection</span>
+                <label class="toggle-switch" title="Always enabled — cannot be disabled">
+                  <input type="checkbox" id="toggle-sheets-sync" checked disabled style="cursor:not-allowed;">
+                  <span class="toggle-slider" style="opacity:0.8;"></span>
+                </label>
+              </label>
+              <span class="form-help" style="color:var(--status-success);"><i class="fas fa-lock me-1"></i>Permanently enabled. All operations use the live backend and real Google Sheets data.</span>
+            </div>
+
+            <div class="form-group mb-4">
+              <label class="form-label" for="sheets-web-app-url">Backend Server API URL</label>
+              <input type="url" class="form-control-custom" id="sheets-web-app-url" placeholder="http://localhost:3001">
+              <span class="form-help">Enter the base URL of your running Node.js Express backend server (e.g. <code>http://localhost:3001</code> for local testing).</span>
+            </div>
+
+            <div class="form-group mb-4">
+              <label class="form-label">Google Sheet Reference Link</label>
+              <div class="d-flex align-center gap-2">
+                <input type="text" class="form-control-custom" readonly value="https://docs.google.com/spreadsheets/d/17pWsYB9T-uz-Ir3IWgeLtdfBCcOOl-cDI7zkodzD4j4/edit" style="background: var(--surface-card-alt); cursor: default;">
+                <a href="https://docs.google.com/spreadsheets/d/17pWsYB9T-uz-Ir3IWgeLtdfBCcOOl-cDI7zkodzD4j4/edit" target="_blank" class="btn-primary-custom" style="padding: 10px; height: 38px; display:flex; align-items:center; justify-content:center; flex-shrink: 0;" title="Open Spreadsheet"><i class="fas fa-external-link-alt"></i></a>
+              </div>
+            </div>
+
+            <div class="d-flex align-center justify-between mb-4">
+              <div id="sheets-connection-status" class="text-sm fw-semibold text-muted">
+                <i class="fas fa-circle-notch fa-spin me-1" style="display: none;" id="status-spinner"></i>
+                <span id="status-text">Status: Checking URL configurations...</span>
+              </div>
+              <button type="button" class="btn-secondary-custom btn-sm" id="btn-test-connection" onclick="testSheetsConnection()">
+                <i class="fas fa-plug me-1"></i> Verify Connection
+              </button>
+            </div>
+          </div>
+
+          <div class="d-flex justify-end gap-3 mt-6">
+            <button class="btn-secondary-custom" onclick="window.location.reload()">Reset Defaults</button>
+            <button class="btn-primary-custom" id="save-settings-btn">Save Configurations</button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../assets/js/theme.js?v=2.0"></script>
+<script src="../assets/js/sidebar.js?v=2.0"></script>
+<script src="../assets/js/toast.js?v=2.0"></script>
+<script src="../assets/js/modal.js?v=2.0"></script>
+<script src="../assets/js/table.js?v=2.0"></script>
+<script src="../assets/js/app.js?v=2.0"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Populate user profile info dynamically
+    const role = AppDB.getRole();
+    const branch = AppDB.getBranch();
+    
+    const avatar = document.getElementById('set-avatar');
+    const name = document.getElementById('set-name');
+    const roleEl = document.getElementById('set-role');
+    const email = document.getElementById('set-email');
+
+    if (role === 'Super HR') {
+      if (avatar) avatar.innerText = 'SA';
+      if (name) name.innerText = 'Super HR Admin';
+      if (roleEl) roleEl.innerText = 'Super HR';
+      if (email) email.innerText = 'super.hr@pgpglass.com';
+    } else {
+      if (avatar) avatar.innerText = 'BH';
+      if (name) name.innerText = `HR Manager (${branch})`;
+      if (roleEl) roleEl.innerText = `Branch HR (${branch})`;
+      if (email) email.innerText = `${branch.toLowerCase()}.hr@pgpglass.com`;
+    }
+
+    // Load sheets settings preferences
+    const sheetsUrl = localStorage.getItem('pgp_google_apps_script_url') || '';
+    
+    const toggleSync = document.getElementById('toggle-sheets-sync');
+    const inputUrl = document.getElementById('sheets-web-app-url');
+    
+    if (toggleSync) toggleSync.checked = true; // Locked to true for live mode
+    if (inputUrl) inputUrl.value = sheetsUrl;
+    
+    updateConnectionStatusUI();
+
+    // Restore active tab from sessionStorage
+    const activeTab = sessionStorage.getItem('pgp_settings_active_tab') || 'general';
+    switchSettingsTab(activeTab);
+  });
+
+  function switchSettingsTab(tab) {
+    sessionStorage.setItem('pgp_settings_active_tab', tab);
+    // Toggle active tab class
+    document.querySelectorAll('.settings-nav-item').forEach(el => el.classList.remove('active'));
+    document.getElementById(`tab-btn-${tab}`).classList.add('active');
+
+    // Toggle active panel
+    document.querySelectorAll('.settings-panel').forEach(el => el.style.display = 'none');
+    document.getElementById(`panel-${tab}`).style.display = 'block';
+  }
+
+  function updateConnectionStatusUI() {
+    const statusText = document.getElementById('status-text');
+    const toggleSync = document.getElementById('toggle-sheets-sync');
+    const inputUrl = document.getElementById('sheets-web-app-url');
+    
+    if (!statusText) return;
+
+    if (!toggleSync.checked) {
+      statusText.innerHTML = '<span style="color:var(--text-muted);"><i class="fas fa-pause-circle me-1"></i> Live Connection Disabled (Using Local Storage)</span>';
+      return;
+    }
+
+    if (!inputUrl.value.trim()) {
+      statusText.innerHTML = '<span style="color:var(--status-danger);"><i class="fas fa-times-circle me-1"></i> Missing Web App URL</span>';
+      return;
+    }
+
+    statusText.innerHTML = '<span style="color:var(--status-warning);"><i class="fas fa-exclamation-circle me-1"></i> Configured (Unverified)</span>';
+  }
+
+  // Bind UI change
+  document.addEventListener('change', (e) => {
+    if (e.target && (e.target.id === 'toggle-sheets-sync' || e.target.id === 'sheets-web-app-url')) {
+      updateConnectionStatusUI();
+    }
+  });
+
+  async function testSheetsConnection() {
+    const urlInput = document.getElementById('sheets-web-app-url');
+    const statusText = document.getElementById('status-text');
+    const spinner = document.getElementById('status-spinner');
+    
+    if (!urlInput || !urlInput.value.trim()) {
+      Toast.warning('Configuration Error', 'Please enter the backend server URL first (e.g. http://localhost:3001).');
+      return;
+    }
+
+    const testUrl = urlInput.value.trim().replace(/\/$/, '') + '/api/health';
+    spinner.style.display = 'inline-block';
+    statusText.innerText = 'Testing connection to backend server...';
+
+    try {
+      const response = await fetch(testUrl);
+      if (!response.ok) throw new Error('HTTP Status ' + response.status);
+      
+      const resData = await response.json();
+      spinner.style.display = 'none';
+
+      if (resData.status === 'ok') {
+        statusText.innerHTML = `<span style="color:var(--status-success);"><i class="fas fa-check-circle me-1"></i> Connected — ${resData.database}</span>`;
+        Toast.success('Connection Verified', `Backend server connected. Database is ${resData.database}.`);
+        // Auto-save the URL on successful test
+        localStorage.setItem('pgp_google_apps_script_url', urlInput.value.trim().replace(/\/$/, ''));
+      } else {
+        throw new Error(resData.error || 'Backend server error');
+      }
+    } catch (err) {
+      spinner.style.display = 'none';
+      statusText.innerHTML = `<span style="color:var(--status-danger);"><i class="fas fa-times-circle me-1"></i> Connection Failed: ${err.message}</span>`;
+      Toast.error('Connection Failed', 'Could not reach backend server. Make sure it is running on the specified URL.');
+      console.error(err);
+    }
+  }
+
+  // Bind save button to persist backend URL and toggle
+  document.addEventListener('DOMContentLoaded', () => {
+    const saveBtn = document.getElementById('save-settings-btn');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', () => {
+        const toggleSync = document.getElementById('toggle-sheets-sync');
+        const urlInput = document.getElementById('sheets-web-app-url');
+        if (toggleSync) localStorage.setItem('pref_sheets_sync', toggleSync.checked);
+        if (urlInput && urlInput.value.trim()) {
+          localStorage.setItem('pgp_google_apps_script_url', urlInput.value.trim().replace(/\/$/, ''));
+        }
+        Toast.success('Settings Saved', 'Backend configuration saved successfully.', 2000);
+      });
+    }
+  });
+
+</script>
+</body>
+</html>
+
+
+
+
+
+

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Excel Upload Center &mdash; PGP Glass Apprentice Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="../assets/css/main.css?v=2.0">
+  <link rel="stylesheet" href="../assets/css/sidebar.css?v=2.0">
+  <link rel="stylesheet" href="../assets/css/components.css?v=2.0">
+  <link rel="stylesheet" href="../assets/css/responsive.css?v=2.0">
+  <style>
+    /* Custom Dropzone Styling */
+    .upload-dropzone {
+      border: 2px dashed var(--border-strong);
+      border-radius: var(--radius-xl);
+      padding: var(--space-12) var(--space-6);
+      text-align: center;
+      cursor: pointer;
+      transition: all var(--transition-base);
+      background: var(--surface-card);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-4);
+    }
+    
+    .upload-dropzone:hover, .upload-dropzone.dragover {
+      border-color: var(--brand-primary);
+      background: var(--brand-primary-subtle);
+      box-shadow: var(--shadow-sm);
+    }
+    
+    .upload-icon-circle {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: var(--brand-primary-subtle);
+      color: var(--brand-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      transition: all var(--transition-base);
+    }
+    
+    .upload-dropzone:hover .upload-icon-circle {
+      transform: scale(1.05);
+    }
+  </style>
+</head>
+<body>
+
+<!-- Global Page Loader -->
+<div id="global-page-loader" class="global-page-loader">
+  <div class="loader-content">
+    <div class="loader-logo">P</div>
+    <div class="loader-title">PGP Glass</div>
+    <div class="loader-text">Loading... Please wait</div>
+    <div class="loader-spinner"></div>
+  </div>
+</div>
+
+<div class="app-wrapper">
+  <!-- Sidebar -->
+  <aside class="app-sidebar" id="app-sidebar"></aside>
+
+  <!-- Mobile Overlay -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <!-- Main Viewport -->
+  <main class="app-main" id="app-main">
+    <!-- Top Navigation Header -->
+    <header class="app-topnav" id="app-topnav"></header>
+
+    <!-- Page Content View -->
+    <div class="app-content animate-fadeIn">
+      
+      <!-- Page Header -->
+      <div class="page-header">
+        <div class="page-header-left">
+          <nav class="breadcrumb-custom" aria-label="Breadcrumb">
+            <a href="dashboard.html">Dashboard</a>
+            <span class="sep">/</span>
+            <span>Excel Upload Center</span>
+          </nav>
+          <h1 class="page-title">Excel Import Center</h1>
+          <p class="page-subtitle">Upload apprentice master data spreadsheets, evaluate rows alignment, and commit validated candidates.</p>
+        </div>
+      </div>
+
+      <!-- Upload Actions Grid -->
+      <div class="dashboard-grid mb-6">
+        
+        <!-- Drag & Drop Zone Card -->
+        <div class="card-custom col-span-2">
+          <div class="card-custom-header">
+            <h3 class="card-custom-title"><div class="card-icon"><i class="fas fa-file-excel"></i></div>Spreadsheet Importer</h3>
+          </div>
+          <div class="card-custom-body">
+            
+            <!-- File Input hidden -->
+            <input type="file" id="file-input" style="display: none;" accept=".xlsx, .xls, .csv">
+            
+            <!-- Idle Upload Dropzone -->
+            <div class="upload-dropzone" id="upload-dropzone">
+              <div class="upload-icon-circle">
+                <i class="fas fa-cloud-upload-alt"></i>
+              </div>
+              <div>
+                <h3 class="fw-bold mb-1" style="font-size: 16px;">Drag and drop your apprentice Excel sheet here</h3>
+                <p class="text-secondary text-sm">Supports XLS, XLSX, and CSV formats. Max file size 8MB.</p>
+              </div>
+              <button class="btn-primary-custom btn-sm mt-2" id="btn-browse-files" onclick="event.stopPropagation(); document.getElementById('file-input').click();">&#x1F4C2; Browse Local Files</button>
+            </div>
+
+            <!-- Uploading / Processing State -->
+            <div id="upload-state-uploading" style="display: none; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-12) var(--space-6); text-align: center; gap: var(--space-4);">
+              <div class="spinner spinner-lg"></div>
+              <div>
+                <h3 class="fw-bold mb-1" id="uploading-file-title">Processing file...</h3>
+                <p class="text-secondary text-sm">Checking headers format and evaluating records integrity.</p>
+              </div>
+              <div class="w-full" style="max-width: 400px;">
+                <div class="progress-custom">
+                  <div class="progress-bar-custom" id="upload-progress-bar" style="width: 0%;"></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Validation Results Details (Initially Hidden) -->
+      <div class="card-custom mb-6 animate-fadeIn" id="upload-results-panel" style="display: none;">
+        <div class="card-custom-header">
+          <h3 class="card-custom-title"><div class="card-icon"><i class="fas fa-clipboard-check"></i></div>Validation & Analysis Report</h3>
+          <div class="card-custom-actions">
+            <button class="btn-secondary-custom" id="btn-cancel-import">Discard Upload</button>
+            <button class="btn-primary-custom" id="btn-confirm-import">
+              <i class="fas fa-check-double"></i> Confirm & Import Records
+            </button>
+          </div>
+        </div>
+        
+        <!-- Validation Statistics Cards -->
+        <div class="filter-bar d-flex justify-between flex-wrap gap-4" style="background: var(--surface-bg); border-bottom: 1px solid var(--border-default);">
+          <div class="align-center d-flex gap-3">
+            <span class="text-xs text-secondary text-uppercase fw-semibold" style="letter-spacing:0.04em;">Analysis Summary:</span>
+          </div>
+          <div class="d-flex flex-wrap gap-5">
+            <div class="align-center d-flex gap-2">
+              <span class="badge-custom badge-neutral" id="res-total" style="font-size:13px; font-weight:700;">0</span>
+              <span class="text-xs text-secondary">Processed</span>
+            </div>
+            <div class="align-center d-flex gap-2">
+              <span class="badge-custom badge-success" id="res-success" style="font-size:13px; font-weight:700;">0</span>
+              <span class="text-xs text-secondary">Success Records</span>
+            </div>
+            <div class="align-center d-flex gap-2">
+              <span class="badge-custom badge-danger" id="res-errors" style="font-size:13px; font-weight:700;">0</span>
+              <span class="text-xs text-secondary">Failed Rows</span>
+            </div>
+            <div class="align-center d-flex gap-2">
+              <span class="badge-custom badge-warning" id="res-duplicates" style="font-size:13px; font-weight:700;">0</span>
+              <span class="text-xs text-secondary">Duplicates Detected</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Validation Details Table -->
+        <div class="table-wrapper">
+          <table class="table-custom">
+            <thead>
+              <tr>
+                <th>Location / Row</th>
+                <th>Employee Code</th>
+                <th>Apprentice Name</th>
+                <th>Error Type</th>
+                <th>Resolution Status / Details</th>
+              </tr>
+            </thead>
+            <tbody id="validation-results-tbody">
+              <!-- Dynamically rendered via app.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Upload History Log List -->
+      <div class="card-custom">
+        <div class="card-custom-header">
+          <h3 class="card-custom-title"><div class="card-icon"><i class="fas fa-history"></i></div>Historical Import Logs</h3>
+        </div>
+        <div class="table-wrapper">
+          <table class="table-custom">
+            <thead>
+              <tr>
+                <th>Date / Time</th>
+                <th>Spreadsheet Name</th>
+                <th>File Size</th>
+                <th>Imported By</th>
+                <th>Success Entries</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="upload-history-tbody">
+              <tr>
+                <td>2026-06-08 09:12</td>
+                <td><span class="fw-semibold text-brand"><i class="fas fa-file-excel me-2 text-success"></i>PGP_Glass_Apprentices_Q2.xlsx</span></td>
+                <td>1.4 MB</td>
+                <td>Super HR Admin</td>
+                <td><span class="badge-custom badge-success">10 Records</span></td>
+                <td><span class="badge-custom badge-success"><i class="fas fa-check-circle"></i> Committed</span></td>
+              </tr>
+              <tr>
+                <td>2026-06-05 14:35</td>
+                <td><span class="fw-semibold text-brand"><i class="fas fa-file-excel me-2 text-success"></i>Kosamba_Apprentice_Registry.xlsx</span></td>
+                <td>820 KB</td>
+                <td>Super HR Admin</td>
+                <td><span class="badge-custom badge-success">5 Records</span></td>
+                <td><span class="badge-custom badge-success"><i class="fas fa-check-circle"></i> Committed</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="../assets/js/theme.js?v=2.0"></script>
+<script src="../assets/js/sidebar.js?v=2.0"></script>
+<script src="../assets/js/toast.js?v=2.0"></script>
+<script src="../assets/js/modal.js?v=2.0"></script>
+<script src="../assets/js/table.js?v=2.0"></script>
+<script src="../assets/js/app.js?v=2.0"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Restrict Branch HR from uploads
+    if (AppDB.getRole() === 'Branch HR') {
+      document.getElementById('app-main').innerHTML = `
+        <div class="empty-state" style="margin-top: 100px;">
+          <div class="empty-state-icon text-danger"><i class="fas fa-lock"></i></div>
+          <div class="empty-state-title">Access Restricted</div>
+          <div class="empty-state-description">Only Super HR accounts are permitted to perform Excel database imports.</div>
+        </div>
+      `;
+    }
+  });
+</script>
+</body>
+</html>
+
+
+
+
+
+

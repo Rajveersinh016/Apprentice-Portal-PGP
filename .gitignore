@@ -1,0 +1,20 @@
+# Dependency directories
+node_modules/
+backend/node_modules/
+
+# Env / Credentials
+.env
+backend/.env
+service-account.json
+backend/config/service-account.json
+
+# Local / OS files
+.DS_Store
+Thumbs.db
+*.local
+
+# Excel / Data files
+*.xlsx
+*.xls
+*.csv
+backend/config/employee_master_reports.xlsx

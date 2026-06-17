@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PGP Glass &mdash; Apprentice Central Portal</title>
+  <meta name="description" content="PGP Glass Apprentice Centralized Management & Analytics Portal.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="assets/css/main.css?v=2.0">
+  <link rel="stylesheet" href="assets/css/components.css?v=2.0">
+
+  <style>
+    .login-page {
+      min-height: 100vh;
+      display: flex;
+      background: #0d1117;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .login-bg {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 40%, rgba(0, 120, 212, 0.18) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 60% at 80% 60%, rgba(124, 58, 237, 0.15) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 40% at 50% 90%, rgba(230, 81, 0, 0.12) 0%, transparent 70%);
+      animation: bgShift 12s ease-in-out infinite alternate;
+    }
+
+    @keyframes bgShift {
+      0%   { filter: hue-rotate(0deg); }
+      100% { filter: hue-rotate(15deg); }
+    }
+
+    .login-grid {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      width: 100%;
+      min-height: 100vh;
+    }
+
+    .login-left {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 60px;
+      color: white;
+    }
+
+    .login-brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .login-brand-logo {
+      width: 52px; height: 52px;
+      background: linear-gradient(135deg, #0078d4, #7c3aed);
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; font-weight: 800; color: white;
+      flex-shrink: 0;
+    }
+    .login-brand-name { font-size: 22px; font-weight: 800; }
+    .login-brand-tag  { font-size: 10px; opacity: 0.6; text-transform: uppercase; letter-spacing: 0.1em; }
+
+    .login-hero-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      max-width: 540px;
+    }
+
+    .login-hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 120, 212, 0.2);
+      border: 1px solid rgba(0, 120, 212, 0.4);
+      color: #58a6ff;
+      padding: 6px 16px;
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 24px;
+      width: fit-content;
+    }
+
+    .login-hero-title {
+      font-size: clamp(32px, 4vw, 48px);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.75) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .login-hero-subtitle {
+      font-size: 15px;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.7;
+      margin-bottom: 40px;
+    }
+
+    .login-features {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .login-feature {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 14px;
+      color: rgba(255,255,255,0.8);
+    }
+
+    .login-feature-icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .login-footer-text {
+      font-size: 12px;
+      color: rgba(255,255,255,0.3);
+    }
+
+    .login-right {
+      width: 500px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 48px;
+      background: rgba(22, 27, 39, 0.4);
+      border-left: 1px solid rgba(255,255,255,0.06);
+      backdrop-filter: blur(24px);
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .login-card-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: white;
+      margin-bottom: 6px;
+    }
+
+    .login-card-subtitle {
+      font-size: 14px;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 32px;
+    }
+
+    .btn-m365 {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 13px 24px;
+      background: #0078d4;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 200ms ease;
+      font-family: 'Inter', sans-serif;
+      margin-bottom: 20px;
+    }
+    .btn-m365:hover {
+      background: #005a9e;
+      box-shadow: 0 8px 24px rgba(0, 120, 212, 0.35);
+      transform: translateY(-1px);
+    }
+
+    .btn-m365-icon { font-size: 20px; }
+
+    .divider-or {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      color: rgba(255,255,255,0.3);
+      font-size: 12px;
+    }
+    .divider-or::before, .divider-or::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(255,255,255,0.12);
+    }
+
+    .demo-form-group { margin-bottom: 16px; }
+
+    .demo-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 6px;
+    }
+
+    .demo-input {
+      width: 100%;
+      padding: 11px 16px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
+      color: white;
+      font-size: 14px;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      transition: all 200ms;
+    }
+    .demo-input::placeholder { color: rgba(255,255,255,0.3); }
+    .demo-input:focus {
+      border-color: #0078d4;
+      box-shadow: 0 0 0 3px rgba(0,120,212,0.2);
+      background: rgba(255,255,255,0.1);
+    }
+
+    .demo-input-wrapper { position: relative; }
+    .demo-input-wrapper input { padding-right: 44px; }
+    .toggle-password {
+      position: absolute;
+      right: 14px; top: 50%;
+      transform: translateY(-50%);
+      background: none; border: none;
+      color: rgba(255,255,255,0.4);
+      cursor: pointer; font-size: 14px;
+      transition: color 200ms;
+    }
+    .toggle-password:hover { color: rgba(255,255,255,0.8); }
+
+    .btn-login {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, #0078d4, #7c3aed);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 200ms;
+      font-family: 'Inter', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .btn-login:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(0,120,212,0.35);
+    }
+    .btn-login:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .login-error {
+      background: rgba(220,38,38,0.15);
+      border: 1px solid rgba(220,38,38,0.4);
+      color: #fca5a5;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .demo-roles {
+      margin-top: 24px;
+      padding: 16px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+    }
+    .demo-roles-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgba(255,255,255,0.4);
+      margin-bottom: 10px;
+    }
+    .demo-role-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .demo-pill {
+      padding: 5px 12px;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 100px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.7);
+      cursor: pointer;
+      transition: all 150ms;
+      background: none;
+      font-family: 'Inter', sans-serif;
+    }
+    .demo-pill:hover {
+      border-color: #0078d4;
+      color: white;
+      background: rgba(0,120,212,0.15);
+    }
+
+    .role-modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 9999;
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+      backdrop-filter: blur(4px);
+    }
+    .role-modal {
+      background: #161b27;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      padding: 32px;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    }
+    .role-modal h2 { color: white; font-size: 20px; margin-bottom: 8px; font-weight: 700; }
+    .role-modal p  { color: rgba(255,255,255,0.5); font-size: 13px; margin-bottom: 24px; }
+    .role-list { display: flex; flex-direction: column; gap: 8px; }
+    .role-list-item {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 16px;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 200ms;
+      background: none; width: 100%; text-align: left;
+      font-family: 'Inter', sans-serif;
+      color: white;
+    }
+    .role-list-item:hover { border-color: #0078d4; background: rgba(0,120,212,0.1); }
+    .role-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+    }
+    .role-info .role-name { font-size: 14px; font-weight: 600; color: white; }
+    .role-info .role-email { font-size: 12px; color: rgba(255,255,255,0.5); }
+    .role-cancel-btn {
+      width: 100%; margin-top: 16px;
+      padding: 10px; background: none;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px; color: rgba(255,255,255,0.5);
+      cursor: pointer; font-size: 13px; font-family: 'Inter', sans-serif;
+      transition: all 200ms;
+    }
+    .role-cancel-btn:hover { border-color: rgba(255,255,255,0.3); color: white; }
+
+    .loading-overlay {
+      position: fixed; inset: 0;
+      background: #0d1117;
+      z-index: 99999;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 20px; color: white;
+      transition: opacity 400ms ease;
+    }
+    .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+    .loading-spinner-large {
+      width: 48px; height: 48px;
+      border: 3px solid rgba(255,255,255,0.15);
+      border-top-color: #0078d4;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    .loading-text { font-size: 14px; color: rgba(255,255,255,0.5); }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-6px); }
+      40%, 80% { transform: translateX(6px); }
+    }
+    .shake { animation: shake 0.4s ease; }
+
+    @media (max-width: 992px) {
+      .login-left { display: none; }
+      .login-right { width: 100%; border-left: none; background: #0d1117; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loading-overlay">
+    <div style="width:52px;height:52px;background:linear-gradient(135deg,#0078d4,#7c3aed);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:white;margin-bottom:4px;">P</div>
+    <div class="loading-spinner-large"></div>
+    <div class="loading-text">Loading Central Portal...</div>
+  </div>
+
+
+
+  <div class="login-page">
+    <div class="login-bg"></div>
+    <div class="login-grid">
+
+      <!-- Left Panel -->
+      <div class="login-left">
+        <div class="login-brand">
+          <div class="login-brand-logo">P</div>
+          <div>
+            <div class="login-brand-name">PGP Glass</div>
+            <div class="login-brand-tag">Apprentice Master Database</div>
+          </div>
+        </div>
+
+        <div class="login-hero-content">
+          <div class="login-hero-badge">
+            <i class="fas fa-shield-alt"></i>
+            Super HR & Branch Dashboard
+          </div>
+          <h1 class="login-hero-title">Centralized Apprentice<br>Master Data & Analytics</h1>
+          <p class="login-hero-subtitle">
+            Upload candidate files, manage service contract compliance, review portal enrollment completions, and generate operational analytics across all factory branches.
+          </p>
+
+          <div class="login-features">
+            <div class="login-feature">
+              <div class="login-feature-icon" style="background:rgba(0,120,212,0.2);color:#58a6ff">
+                <i class="fas fa-file-excel"></i>
+              </div>
+              <span>Drag-and-drop Excel upload and validation center</span>
+            </div>
+            <div class="login-feature">
+              <div class="login-feature-icon" style="background:rgba(124,58,237,0.2);color:#a78bfa">
+                <i class="fas fa-user-check"></i>
+              </div>
+              <span>Contract compliance & enrollment validation</span>
+            </div>
+            <div class="login-feature">
+              <div class="login-feature-icon" style="background:rgba(5,150,105,0.2);color:#34d399">
+                <i class="fas fa-chart-line"></i>
+              </div>
+              <span>Interactive Chart.js location comparison</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="login-footer-text">
+          &copy; 2026 PGP Glass Industries Ltd. &middot; All rights reserved.
+        </div>
+      </div>
+
+      <!-- Right Panel -->
+      <div class="login-right">
+        <div class="login-card">
+          <div class="login-card-title">Welcome back</div>
+          <div class="login-card-subtitle">Sign in to access your dashboard</div>
+
+
+
+          <!-- Demo Login Form -->
+          <div class="login-error" id="login-error">
+            <i class="fas fa-exclamation-circle"></i>
+            <span id="login-error-msg"></span>
+          </div>
+
+          <form id="login-form" onsubmit="handleFormLogin(event)">
+            <div class="demo-form-group">
+              <label class="demo-label" for="login-email">Email Address</label>
+              <input
+                type="email"
+                id="login-email"
+                class="demo-input"
+                placeholder="e.g. super.hr@pgpglass.com"
+                required
+              >
+            </div>
+            <div class="demo-form-group">
+              <label class="demo-label" for="login-password">Password</label>
+              <div class="demo-input-wrapper">
+                <input
+                  type="password"
+                  id="login-password"
+                  class="demo-input"
+                  placeholder="Enter password"
+                  required
+                >
+                <button type="button" class="toggle-password" onclick="togglePwd()">
+                  <i class="fas fa-eye" id="pwd-eye"></i>
+                </button>
+              </div>
+            </div>
+            
+            <div class="d-flex justify-between align-center mb-4" style="margin-top: 10px;">
+              <label for="remember-me" class="align-center d-flex gap-2 cursor-pointer select-none text-xs text-secondary">
+                <input type="checkbox" id="remember-me" style="accent-color: #0078d4;"> Remember Me
+              </label>
+              <a href="#" class="text-xs" style="color: #58a6ff;" onclick="handleForgotPassword(event)">Forgot Password?</a>
+            </div>
+
+            <button type="submit" class="btn-login" id="btn-login">
+              <i class="fas fa-sign-in-alt"></i> Sign In
+            </button>
+          </form>
+
+          <!-- Demo quick access static helper -->
+          <div class="demo-roles" style="margin-top: 24px; padding: 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px;">
+            <div class="demo-roles-title" style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.4); margin-bottom: 8px;">Portal Access Accounts</div>
+            <div style="font-size: 12px; color: rgba(255,255,255,0.6); line-height: 1.6;">
+              <div>&bull; <strong>Super HR:</strong> <code>super.hr@pgpglass.com</code></div>
+              <div>&bull; <strong>Kosamba Branch HR:</strong> <code>kosamba.hr@pgpglass.com</code></div>
+              <div>&bull; <strong>Halol Branch HR:</strong> <code>halol.hr@pgpglass.com</code></div>
+              <div style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.08); font-size: 11px;">Password for all accounts: <strong style="color: #58a6ff;">PGP@2024</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      // Clear any existing session on login page load (preserve settings)
+      localStorage.removeItem('pgp_branch');
+      localStorage.removeItem('pgp_role');
+      localStorage.removeItem('pgp_token');
+      localStorage.removeItem('pgp_user_name');
+      localStorage.removeItem('pgp_user_email');
+      sessionStorage.clear();
+      const overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.classList.add('hidden');
+    });
+
+    function handleFormLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      const btn = document.getElementById('btn-login');
+      const errorEl = document.getElementById('login-error');
+      const errMsg = document.getElementById('login-error-msg');
+
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authenticating...';
+      errorEl.style.display = 'none';
+
+      const fallbackUrl = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
+        ? window.location.origin
+        : 'http://localhost:3001';
+      const backendUrl = localStorage.getItem('pgp_google_apps_script_url') || fallbackUrl;
+
+      // Always authenticate using backend API
+      fetch(`${backendUrl}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          localStorage.setItem('pgp_token', data.token);
+          localStorage.setItem('pgp_role', data.user.role);
+          localStorage.setItem('pgp_branch', data.user.location);
+          localStorage.setItem('pgp_user_name', data.user.name);
+          localStorage.setItem('pgp_user_email', data.user.email);
+          localStorage.setItem('pref_sheets_sync', 'true'); // Ensure it is marked as true globally
+
+          btn.innerHTML = '<i class="fas fa-check"></i> Redirecting...';
+          btn.style.background = '#059669';
+
+          const overlay = document.getElementById('loading-overlay');
+          if (overlay) {
+            overlay.classList.remove('hidden');
+          }
+
+          setTimeout(() => {
+            window.location.href = 'pages/dashboard.html';
+          }, 150);
+        } else {
+          throw new Error(data.error || 'Invalid email or password.');
+        }
+      })
+      .catch(err => {
+        console.error("Login API Error:", err);
+        errMsg.textContent = err.message || 'Connection to backend database failed.';
+        errorEl.style.display = 'flex';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
+        document.getElementById('login-form').classList.add('shake');
+        setTimeout(() => document.getElementById('login-form').classList.remove('shake'), 400);
+      });
+    }
+
+    function togglePwd() {
+      const input = document.getElementById('login-password');
+      const eye = document.getElementById('pwd-eye');
+      if (input.type === 'password') {
+        input.type = 'text';
+        eye.classList.replace('fa-eye', 'fa-eye-slash');
+      } else {
+        input.type = 'password';
+        eye.classList.replace('fa-eye-slash', 'fa-eye');
+      }
+    }
+
+    function handleForgotPassword(e) {
+      e.preventDefault();
+      const errEl = document.getElementById('login-error');
+      const errMsg = document.getElementById('login-error-msg');
+      errMsg.textContent = 'Password reset is not available in this prototype. Use PGP@2024 to log in.';
+      errEl.style.display = 'flex';
+      errEl.style.background = 'rgba(0,120,212,0.15)';
+      errEl.style.borderColor = 'rgba(0,120,212,0.4)';
+      errEl.style.color = '#93c5fd';
+      document.getElementById('login-email').focus();
+    }
+  </script>
+</body>
+</html>
+
+
+
+
+

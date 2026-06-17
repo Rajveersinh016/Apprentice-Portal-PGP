@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Export Reports &mdash; PGP Glass Apprentice Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="../assets/css/main.css?v=2.0">
+  <link rel="stylesheet" href="../assets/css/sidebar.css?v=2.0">
+  <link rel="stylesheet" href="../assets/css/components.css?v=2.0">
+  <link rel="stylesheet" href="../assets/css/dashboard.css?v=2.0">
+  <link rel="stylesheet" href="../assets/css/responsive.css?v=2.0">
+</head>
+<body>
+
+<!-- Global Page Loader -->
+<div id="global-page-loader" class="global-page-loader">
+  <div class="loader-content">
+    <div class="loader-logo">P</div>
+    <div class="loader-title">PGP Glass</div>
+    <div class="loader-text">Loading... Please wait</div>
+    <div class="loader-spinner"></div>
+  </div>
+</div>
+
+<div class="app-wrapper">
+  <!-- Sidebar -->
+  <aside class="app-sidebar" id="app-sidebar"></aside>
+
+  <!-- Mobile Overlay -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <!-- Main Viewport -->
+  <main class="app-main" id="app-main">
+    <!-- Top Navigation Header -->
+    <header class="app-topnav" id="app-topnav"></header>
+
+    <!-- Page Content View -->
+    <div class="app-content animate-fadeIn">
+      
+      <!-- Page Header -->
+      <div class="page-header">
+        <div class="page-header-left">
+          <nav class="breadcrumb-custom" aria-label="Breadcrumb">
+            <a href="dashboard.html">Dashboard</a>
+            <span class="sep">/</span>
+            <span>Reports Center</span>
+          </nav>
+          <h1 class="page-title">Export Reports</h1>
+          <p class="page-subtitle">Configure, compile, and download apprentice data logs across compliant templates.</p>
+        </div>
+      </div>
+
+      <!-- Report Configurator Form -->
+      <div class="card-custom mb-6 animate-fadeIn">
+        <div class="card-custom-header">
+          <h3 class="card-custom-title"><div class="card-icon"><i class="fas fa-sliders-h"></i></div>Custom Report Configurator</h3>
+        </div>
+        <div class="card-custom-body">
+          <form id="report-builder-form" class="d-flex flex-column gap-5">
+            <div class="form-grid form-grid-3">
+              <!-- Report Type Selector -->
+              <div class="form-group">
+                <label class="form-label" for="report-filter-type">Report Template *</label>
+                <select class="form-control-custom form-select-custom" id="report-filter-type" required>
+                  <option value="master">Full Master Report</option>
+                  <option value="active">Active Apprentices Report</option>
+                  <option value="completed">Completed Apprentices Report (Apprentice Completion)</option>
+                  <option value="branch_wise">Branch Wise Report</option>
+                  <option value="department_wise">Department Wise Report</option>
+                  <option value="missing_contract">Missing Contract ID Report</option>
+                  <option value="missing_enrollment">Missing Portal Enrollment Report</option>
+                  <option value="missing_portal_name">Missing Portal Name Report</option>
+                  <option value="completion_reason">Completion Reason Report</option>
+                  <option value="permanent_conversion">Permanent Conversion Report</option>
+                </select>
+              </div>
+
+              <!-- Location Filter -->
+              <div class="form-group" id="report-loc-group">
+                <label class="form-label" for="report-filter-location">Location Scope</label>
+                <select class="form-control-custom form-select-custom" id="report-filter-location">
+                  <option value="All Locations">All Locations</option>
+                  <option value="Kosamba">Kosamba Factory</option>
+                  <option value="Halol">Halol Factory</option>
+                  <option value="Jambusar">Jambusar Center</option>
+                  <option value="Vadodara">Vadodara Center</option>
+                </select>
+              </div>
+
+              <!-- Department Filter -->
+              <div class="form-group">
+                <label class="form-label" for="report-filter-dept">Department</label>
+                <select class="form-control-custom form-select-custom" id="report-filter-dept">
+                  <option value="All">All Departments</option>
+                  <option value="Production">Production</option>
+                  <option value="Maintenance">Maintenance</option>
+                  <option value="Quality Assurance">Quality Assurance</option>
+                  <option value="Logistics">Logistics</option>
+                  <option value="Engineering">Engineering</option>
+                  <option value="HR">HR</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-grid form-grid-3">
+              <!-- Lifecycle Status Filter -->
+              <div class="form-group">
+                <label class="form-label" for="report-filter-status">Lifecycle Status</label>
+                <select class="form-control-custom form-select-custom" id="report-filter-status">
+                  <option value="All">All Statuses</option>
+                  <option value="Active">Active Training</option>
+                  <option value="Completed">Completed Apprenticeship</option>
+                </select>
+              </div>
+
+              <!-- Gender Filter -->
+              <div class="form-group">
+                <label class="form-label" for="report-filter-gender">Gender / Sex</label>
+                <select class="form-control-custom form-select-custom" id="report-filter-gender">
+                  <option value="All">All</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                </select>
+              </div>
+
+              <!-- Global Search Query -->
+              <div class="form-group">
+                <label class="form-label" for="report-filter-search">Global Search Filter</label>
+                <input type="text" class="form-control-custom" id="report-filter-search" placeholder="Search by name, code, phone, contract...">
+              </div>
+            </div>
+
+            <div class="form-grid form-grid-3 align-center">
+              <!-- Date Range Start -->
+              <div class="form-group">
+                <label class="form-label" for="report-filter-date-start">Date Range From</label>
+                <input type="date" class="form-control-custom" id="report-filter-date-start">
+              </div>
+
+              <!-- Date Range End -->
+              <div class="form-group">
+                <label class="form-label" for="report-filter-date-end">Date Range To</label>
+                <input type="date" class="form-control-custom" id="report-filter-date-end">
+              </div>
+
+              <!-- Export Format Selector -->
+              <div class="form-group">
+                <label class="form-label">Download File Format</label>
+                <div class="d-flex gap-4 mt-2">
+                  <label class="align-center d-flex gap-2 cursor-pointer text-sm">
+                    <input type="radio" name="report-format" value="csv" checked style="accent-color: var(--brand-primary);"> CSV
+                  </label>
+                  <label class="align-center d-flex gap-2 cursor-pointer text-sm">
+                    <input type="radio" name="report-format" value="excel" style="accent-color: var(--brand-primary);"> Excel
+                  </label>
+                  <label class="align-center d-flex gap-2 cursor-pointer text-sm">
+                    <input type="radio" name="report-format" value="pdf" style="accent-color: var(--brand-primary);"> PDF
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div class="divider" style="margin: 0;"></div>
+
+            <div class="d-flex justify-between align-center flex-wrap gap-3">
+              <span class="text-xs text-muted"><i class="fas fa-info-circle me-1"></i> Branch HR accounts can only compile and download local location data arrays.</span>
+              <button type="submit" class="btn-primary-custom" style="padding: 10px 24px;">
+                <i class="fas fa-file-export me-1"></i> Compile & Export Report
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Report Export Grid Cards -->
+      <div class="report-type-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-5);">
+        <!-- Card 1 -->
+        <div class="report-type-card d-flex flex-column" data-report-type="active" style="padding: var(--space-5); height: 210px;">
+          <div class="report-type-icon" style="background:#eff6ff;color:#0078d4;"><i class="fas fa-user-graduate"></i></div>
+          <div class="report-type-name">Active Apprentices Report</div>
+          <p class="report-type-desc mb-3" style="font-size: 12px; line-height: var(--lh-relaxed);">Exports active candidates, NAPS contract statuses, and enrollment names.</p>
+          <div class="d-flex gap-2 mt-auto w-full">
+            <button class="btn-primary-custom btn-sm btn-export-csv" style="flex: 1; justify-content: center; font-size: 11px;"><i class="fas fa-file-csv"></i> CSV</button>
+            <button class="btn-primary-custom btn-sm btn-export-excel" style="flex: 1; justify-content: center; font-size: 11px; background: #107c41;"><i class="fas fa-file-excel"></i> Excel</button>
+            <button class="btn-primary-custom btn-sm btn-export-pdf" style="flex: 1; justify-content: center; font-size: 11px; background: #d32f2f;"><i class="fas fa-file-pdf"></i> PDF</button>
+          </div>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="report-type-card d-flex flex-column" data-report-type="completed" style="padding: var(--space-5); height: 210px;">
+          <div class="report-type-icon" style="background:#d1fae5;color:#059669;"><i class="fas fa-graduation-cap"></i></div>
+          <div class="report-type-name">Completed Apprentices Report</div>
+          <p class="report-type-desc mb-3" style="font-size: 12px; line-height: var(--lh-relaxed);">Exports qualification fields, dates, reason details, and sign-off remarks.</p>
+          <div class="d-flex gap-2 mt-auto w-full">
+            <button class="btn-primary-custom btn-sm btn-export-csv" style="flex: 1; justify-content: center; font-size: 11px;"><i class="fas fa-file-csv"></i> CSV</button>
+            <button class="btn-primary-custom btn-sm btn-export-excel" style="flex: 1; justify-content: center; font-size: 11px; background: #107c41;"><i class="fas fa-file-excel"></i> Excel</button>
+            <button class="btn-primary-custom btn-sm btn-export-pdf" style="flex: 1; justify-content: center; font-size: 11px; background: #d32f2f;"><i class="fas fa-file-pdf"></i> PDF</button>
+          </div>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="report-type-card d-flex flex-column" data-report-type="branch_wise" style="padding: var(--space-5); height: 210px;">
+          <div class="report-type-icon" style="background:#fff3e0;color:#e65100;"><i class="fas fa-map-marked-alt"></i></div>
+          <div class="report-type-name">Branch Wise Report</div>
+          <p class="report-type-desc mb-3" style="font-size: 12px; line-height: var(--lh-relaxed);">Exports aggregated active, completed, and conversion metrics per branch location.</p>
+          <div class="d-flex gap-2 mt-auto w-full">
+            <button class="btn-primary-custom btn-sm btn-export-csv" style="flex: 1; justify-content: center; font-size: 11px;"><i class="fas fa-file-csv"></i> CSV</button>
+            <button class="btn-primary-custom btn-sm btn-export-excel" style="flex: 1; justify-content: center; font-size: 11px; background: #107c41;"><i class="fas fa-file-excel"></i> Excel</button>
+            <button class="btn-primary-custom btn-sm btn-export-pdf" style="flex: 1; justify-content: center; font-size: 11px; background: #d32f2f;"><i class="fas fa-file-pdf"></i> PDF</button>
+          </div>
+        </div>
+
+        <!-- Card 4 -->
+        <div class="report-type-card d-flex flex-column" data-report-type="department_wise" style="padding: var(--space-5); height: 210px;">
+          <div class="report-type-icon" style="background:#f3e8ff;color:#7e22ce;"><i class="fas fa-industry"></i></div>
+          <div class="report-type-name">Department Wise Report</div>
+          <p class="report-type-desc mb-3" style="font-size: 12px; line-height: var(--lh-relaxed);">Exports summary active and completed metrics across departments.</p>
+          <div class="d-flex gap-2 mt-auto w-full">
+            <button class="btn-primary-custom btn-sm btn-export-csv" style="flex: 1; justify-content: center; font-size: 11px;"><i class="fas fa-file-csv"></i> CSV</button>
+            <button class="btn-primary-custom btn-sm btn-export-excel" style="flex: 1; justify-content: center; font-size: 11px; background: #107c41;"><i class="fas fa-file-excel"></i> Excel</button>
+            <button class="btn-primary-custom btn-sm btn-export-pdf" style="flex: 1; justify-content: center; font-size: 11px; background: #d32f2f;"><i class="fas fa-file-pdf"></i> PDF</button>
+          </div>
+        </div>
+
+        <!-- Card 5 -->
+        <div class="report-type-card d-flex flex-column" data-report-type="missing_contract" style="padding: var(--space-5); height: 210px;">
+          <div class="report-type-icon" style="background:#fee2e2;color:#dc2626;"><i class="fas fa-file-signature"></i></div>
+          <div class="report-type-name">Missing Contract ID Report</div>
+          <p class="report-type-desc mb-3" style="font-size: 12px; line-height: var(--lh-relaxed);">Exports registry of active apprentices with pending Contract IDs.</p>
+          <div class="d-flex gap-2 mt-auto w-full">
+            <button class="btn-primary-custom btn-sm btn-export-csv" style="flex: 1; justify-content: center; font-size: 11px;"><i class="fas fa-file-csv"></i> CSV</button>
+            <button class="btn-primary-custom btn-sm btn-export-excel" style="flex: 1; justify-content: center; font-size: 11px; background: #107c41;"><i class="fas fa-file-excel"></i> Excel</button>
+            <button class="btn-primary-custom btn-sm btn-export-pdf" style="flex: 1; justify-content: center; font-size: 11px; background: #d32f2f;"><i class="fas fa-file-pdf"></i> PDF</button>
+          </div>
+        </div>
+
+        <!-- Card 6 -->
+        <div class="report-type-card d-flex flex-column" data-report-type="missing_enrollment" style="padding: var(--space-5); height: 210px;">
+          <div class="report-type-icon" style="background:#e0f2fe;color:#0369a1;"><i class="fas fa-passport"></i></div>
+          <div class="report-type-name">Missing Portal Enrollment Report</div>
+          <p class="report-type-desc mb-3" style="font-size: 12px; line-height: var(--lh-relaxed);">Exports registry of active apprentices with pending registration numbers.</p>
+          <div class="d-flex gap-2 mt-auto w-full">
+            <button class="btn-primary-custom btn-sm btn-export-csv" style="flex: 1; justify-content: center; font-size: 11px;"><i class="fas fa-file-csv"></i> CSV</button>
+            <button class="btn-primary-custom btn-sm btn-export-excel" style="flex: 1; justify-content: center; font-size: 11px; background: #107c41;"><i class="fas fa-file-excel"></i> Excel</button>
+            <button class="btn-primary-custom btn-sm btn-export-pdf" style="flex: 1; justify-content: center; font-size: 11px; background: #d32f2f;"><i class="fas fa-file-pdf"></i> PDF</button>
+          </div>
+        </div>
+
+        <!-- Card 7 -->
+        <div class="report-type-card d-flex flex-column" data-report-type="missing_portal_name" style="padding: var(--space-5); height: 210px;">
+          <div class="report-type-icon" style="background:#e0e7ff;color:#4338ca;"><i class="fas fa-id-card-alt"></i></div>
+          <div class="report-type-name">Missing Portal Name Report</div>
+          <p class="report-type-desc mb-3" style="font-size: 12px; line-height: var(--lh-relaxed);">Exports registry of active apprentices with missing portal names.</p>
+          <div class="d-flex gap-2 mt-auto w-full">
+            <button class="btn-primary-custom btn-sm btn-export-csv" style="flex: 1; justify-content: center; font-size: 11px;"><i class="fas fa-file-csv"></i> CSV</button>
+            <button class="btn-primary-custom btn-sm btn-export-excel" style="flex: 1; justify-content: center; font-size: 11px; background: #107c41;"><i class="fas fa-file-excel"></i> Excel</button>
+            <button class="btn-primary-custom btn-sm btn-export-pdf" style="flex: 1; justify-content: center; font-size: 11px; background: #d32f2f;"><i class="fas fa-file-pdf"></i> PDF</button>
+          </div>
+        </div>
+
+        <!-- Card 8 -->
+        <div class="report-type-card d-flex flex-column" data-report-type="completion_reason" style="padding: var(--space-5); height: 210px;">
+          <div class="report-type-icon" style="background:#ecfeff;color:#0891b2;"><i class="fas fa-chart-pie"></i></div>
+          <div class="report-type-name">Completion Reason Report</div>
+          <p class="report-type-desc mb-3" style="font-size: 12px; line-height: var(--lh-relaxed);">Exports breakdown distribution counts per completion sign-off category.</p>
+          <div class="d-flex gap-2 mt-auto w-full">
+            <button class="btn-primary-custom btn-sm btn-export-csv" style="flex: 1; justify-content: center; font-size: 11px;"><i class="fas fa-file-csv"></i> CSV</button>
+            <button class="btn-primary-custom btn-sm btn-export-excel" style="flex: 1; justify-content: center; font-size: 11px; background: #107c41;"><i class="fas fa-file-excel"></i> Excel</button>
+            <button class="btn-primary-custom btn-sm btn-export-pdf" style="flex: 1; justify-content: center; font-size: 11px; background: #d32f2f;"><i class="fas fa-file-pdf"></i> PDF</button>
+          </div>
+        </div>
+
+        <!-- Card 9 -->
+        <div class="report-type-card d-flex flex-column" data-report-type="permanent_conversion" style="padding: var(--space-5); height: 210px;">
+          <div class="report-type-icon" style="background:#fdf2f8;color:#db2777;"><i class="fas fa-user-check"></i></div>
+          <div class="report-type-name">Permanent Conversion Report</div>
+          <p class="report-type-desc mb-3" style="font-size: 12px; line-height: var(--lh-relaxed);">Exports registry of completed apprentices converted to permanent roles.</p>
+          <div class="d-flex gap-2 mt-auto w-full">
+            <button class="btn-primary-custom btn-sm btn-export-csv" style="flex: 1; justify-content: center; font-size: 11px;"><i class="fas fa-file-csv"></i> CSV</button>
+            <button class="btn-primary-custom btn-sm btn-export-excel" style="flex: 1; justify-content: center; font-size: 11px; background: #107c41;"><i class="fas fa-file-excel"></i> Excel</button>
+            <button class="btn-primary-custom btn-sm btn-export-pdf" style="flex: 1; justify-content: center; font-size: 11px; background: #d32f2f;"><i class="fas fa-file-pdf"></i> PDF</button>
+          </div>
+        </div>
+
+        <!-- Card 10 -->
+        <div class="report-type-card d-flex flex-column" data-report-type="master" style="padding: var(--space-5); height: 210px;">
+          <div class="report-type-icon" style="background:#f0fdf4;color:#16a34a;"><i class="fas fa-database"></i></div>
+          <div class="report-type-name">Full Master Report</div>
+          <p class="report-type-desc mb-3" style="font-size: 12px; line-height: var(--lh-relaxed);">Exports complete database containing active, completed, and dynamic upload fields.</p>
+          <div class="d-flex gap-2 mt-auto w-full">
+            <button class="btn-primary-custom btn-sm btn-export-csv" style="flex: 1; justify-content: center; font-size: 11px;"><i class="fas fa-file-csv"></i> CSV</button>
+            <button class="btn-primary-custom btn-sm btn-export-excel" style="flex: 1; justify-content: center; font-size: 11px; background: #107c41;"><i class="fas fa-file-excel"></i> Excel</button>
+            <button class="btn-primary-custom btn-sm btn-export-pdf" style="flex: 1; justify-content: center; font-size: 11px; background: #d32f2f;"><i class="fas fa-file-pdf"></i> PDF</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Export History Table -->
+      <div class="card-custom">
+        <div class="card-custom-header">
+          <h3 class="card-custom-title"><div class="card-icon"><i class="fas fa-history"></i></div>Recent Export Task Logs</h3>
+        </div>
+        <div class="table-wrapper">
+          <table class="table-custom">
+            <thead>
+              <tr>
+                <th>Date / Time</th>
+                <th>Report Title</th>
+                <th>Format</th>
+                <th>Filter Criteria</th>
+                <th>Generated By</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>2026-06-08 10:14</td>
+                <td><span class="fw-semibold">Active Apprentices Registry</span></td>
+                <td><span class="badge-custom badge-neutral">CSV</span></td>
+                <td>Branch: Kosamba | Dept: All</td>
+                <td>Super HR Admin</td>
+                <td><span class="badge-custom badge-success"><i class="fas fa-check-circle me-1"></i> Downloaded</span></td>
+              </tr>
+              <tr>
+                <td>2026-06-07 15:24</td>
+                <td><span class="fw-semibold">Completed Apprentices History</span></td>
+                <td><span class="badge-custom badge-neutral">CSV</span></td>
+                <td>Branch: All | Dept: All</td>
+                <td>Super HR Admin</td>
+                <td><span class="badge-custom badge-success"><i class="fas fa-check-circle me-1"></i> Downloaded</span></td>
+              </tr>
+              <tr>
+                <td>2026-06-03 11:05</td>
+                <td><span class="fw-semibold">Monthly Intake Analysis</span></td>
+                <td><span class="badge-custom badge-neutral">CSV</span></td>
+                <td>Intake Range: Jan-Jun</td>
+                <td>Kosamba HR Lead</td>
+                <td><span class="badge-custom badge-success"><i class="fas fa-check-circle me-1"></i> Downloaded</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../assets/js/theme.js?v=2.0"></script>
+<script src="../assets/js/sidebar.js?v=2.0"></script>
+<script src="../assets/js/toast.js?v=2.0"></script>
+<script src="../assets/js/modal.js?v=2.0"></script>
+<script src="../assets/js/table.js?v=2.0"></script>
+<script src="../assets/js/app.js?v=2.0"></script>
+</body>
+</html>
+
+
+
+
+
+

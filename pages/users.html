@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Management &mdash; PGP Glass Apprentice Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="../assets/css/main.css?v=2.0">
+  <link rel="stylesheet" href="../assets/css/sidebar.css?v=2.0">
+  <link rel="stylesheet" href="../assets/css/components.css?v=2.0">
+  <link rel="stylesheet" href="../assets/css/responsive.css?v=2.0">
+</head>
+<body>
+
+<!-- Global Page Loader -->
+<div id="global-page-loader" class="global-page-loader">
+  <div class="loader-content">
+    <div class="loader-logo">P</div>
+    <div class="loader-title">PGP Glass</div>
+    <div class="loader-text">Loading... Please wait</div>
+    <div class="loader-spinner"></div>
+  </div>
+</div>
+
+<div class="app-wrapper">
+  <!-- Sidebar -->
+  <aside class="app-sidebar" id="app-sidebar"></aside>
+
+  <!-- Mobile Overlay -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <!-- Main Viewport -->
+  <main class="app-main" id="app-main">
+    <!-- Top Navigation Header -->
+    <header class="app-topnav" id="app-topnav"></header>
+
+    <!-- Page Content View -->
+    <div class="app-content animate-fadeIn">
+      
+      <!-- Page Header -->
+      <div class="page-header">
+        <div class="page-header-left">
+          <nav class="breadcrumb-custom" aria-label="Breadcrumb">
+            <a href="dashboard.html">Dashboard</a>
+            <span class="sep">/</span>
+            <span>User Management</span>
+          </nav>
+          <h1 class="page-title">User Account Directory</h1>
+          <p class="page-subtitle">Configure administrative roles, branch location accesses, and user statuses.</p>
+        </div>
+        <div class="page-header-actions">
+          <button class="btn-primary-custom" onclick="ModalManager.show('modal-add-user')">
+            <i class="fas fa-user-plus"></i> Add New User
+          </button>
+        </div>
+      </div>
+
+      <!-- Users Grid Panel -->
+      <div class="stat-cards-grid" id="users-cards-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+        <!-- Loaded Dynamically via app.js -->
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- Add User Modal Backdrop -->
+<div class="modal-backdrop-custom" id="modal-add-user" style="display: none;">
+  <div class="modal-custom modal-md">
+    <div class="modal-header-custom">
+      <h3 class="modal-title-custom"><i class="fas fa-user-plus"></i> Register User Account</h3>
+      <button class="modal-close-btn" onclick="ModalManager.hide('modal-add-user')"><i class="fas fa-times"></i></button>
+    </div>
+    <form id="add-user-form">
+      <div class="modal-body-custom d-flex flex-column gap-4">
+        
+        <div class="form-group">
+          <label class="form-label" for="user-name">Full Name <span class="required">*</span></label>
+          <input type="text" class="form-control-custom" id="user-name" placeholder="e.g. Rajesh Mehta" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="user-email">Email Address <span class="required">*</span></label>
+          <input type="email" class="form-control-custom" id="user-email" placeholder="e.g. rajesh.mehta@pgpglass.com" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="user-role">Administrative Role <span class="required">*</span></label>
+          <select class="form-control-custom form-select-custom" id="user-role" onchange="toggleAddUserLocation(this.value)" required>
+            <option value="Branch HR">Branch HR Lead</option>
+            <option value="Super HR">Super HR Admin</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="add-user-location-group">
+          <label class="form-label" for="user-location">Branch Assignment <span class="required">*</span></label>
+          <select class="form-control-custom form-select-custom" id="user-location">
+            <option value="Kosamba">Kosamba Factory</option>
+            <option value="Halol">Halol Factory</option>
+            <option value="Jambusar">Jambusar Center</option>
+            <option value="Vadodara">Vadodara Center</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="user-password">Account Password</label>
+          <div class="demo-input-wrapper" style="position: relative;">
+            <input type="password" class="form-control-custom" id="user-password" placeholder="Leave blank to use default PGP@2024">
+            <button type="button" class="toggle-password" onclick="toggleModalPwd('user-password', 'pwd-eye-add')" style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;">
+              <i class="fas fa-eye" id="pwd-eye-add"></i>
+            </button>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer-custom">
+        <button type="button" class="btn-secondary-custom" onclick="ModalManager.hide('modal-add-user')">Cancel</button>
+        <button type="submit" class="btn-primary-custom">Register User</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit User Modal Backdrop -->
+<div class="modal-backdrop-custom" id="modal-edit-user" style="display: none;">
+  <div class="modal-custom modal-md">
+    <div class="modal-header-custom">
+      <h3 class="modal-title-custom"><i class="fas fa-user-edit"></i> Edit User Account</h3>
+      <button class="modal-close-btn" onclick="ModalManager.hide('modal-edit-user')"><i class="fas fa-times"></i></button>
+    </div>
+    <form id="edit-user-form">
+      <input type="hidden" id="edit-user-id">
+      <div class="modal-body-custom d-flex flex-column gap-4">
+        
+        <div class="form-group">
+          <label class="form-label" for="edit-user-name">Full Name <span class="required">*</span></label>
+          <input type="text" class="form-control-custom" id="edit-user-name" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="edit-user-email">Email Address <span class="required">*</span></label>
+          <input type="email" class="form-control-custom" id="edit-user-email" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="edit-user-role">Administrative Role <span class="required">*</span></label>
+          <select class="form-control-custom form-select-custom" id="edit-user-role" onchange="toggleEditUserLocation(this.value)" required>
+            <option value="Branch HR">Branch HR Lead</option>
+            <option value="Super HR">Super HR Admin</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="edit-user-location-group">
+          <label class="form-label" for="edit-user-location">Branch Assignment <span class="required">*</span></label>
+          <select class="form-control-custom form-select-custom" id="edit-user-location">
+            <option value="Kosamba">Kosamba Factory</option>
+            <option value="Halol">Halol Factory</option>
+            <option value="Jambusar">Jambusar Center</option>
+            <option value="Vadodara">Vadodara Center</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="edit-user-password">Reset Password</label>
+          <div class="demo-input-wrapper" style="position: relative;">
+            <input type="password" class="form-control-custom" id="edit-user-password" placeholder="Leave blank to keep current password">
+            <button type="button" class="toggle-password" onclick="toggleModalPwd('edit-user-password', 'pwd-eye-edit')" style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;">
+              <i class="fas fa-eye" id="pwd-eye-edit"></i>
+            </button>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer-custom">
+        <button type="button" class="btn-secondary-custom" onclick="ModalManager.hide('modal-edit-user')">Cancel</button>
+        <button type="submit" class="btn-primary-custom">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="../assets/js/theme.js?v=2.0"></script>
+<script src="../assets/js/sidebar.js?v=2.0"></script>
+<script src="../assets/js/toast.js?v=2.0"></script>
+<script src="../assets/js/modal.js?v=2.0"></script>
+<script src="../assets/js/table.js?v=2.0"></script>
+<script src="../assets/js/app.js?v=2.0"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Lock access for Branch HR completely
+    if (AppDB.getRole() === 'Branch HR') {
+      document.getElementById('app-main').innerHTML = `
+        <div class="empty-state" style="margin-top: 100px;">
+          <div class="empty-state-icon text-danger"><i class="fas fa-lock"></i></div>
+          <div class="empty-state-title">Access Restricted</div>
+          <div class="empty-state-description">Only Super HR accounts are permitted to configure administrative permissions.</div>
+        </div>
+      `;
+    }
+  });
+
+  function toggleAddUserLocation(role) {
+    const group = document.getElementById('add-user-location-group');
+    if (group) {
+      group.style.display = role === 'Super HR' ? 'none' : 'flex';
+    }
+  }
+
+  function toggleEditUserLocation(role) {
+    const group = document.getElementById('edit-user-location-group');
+    if (group) {
+      group.style.display = role === 'Super HR' ? 'none' : 'flex';
+    }
+  }
+
+  function toggleModalPwd(inputId, eyeId) {
+    const input = document.getElementById(inputId);
+    const eye = document.getElementById(eyeId);
+    if (input && eye) {
+      if (input.type === 'password') {
+        input.type = 'text';
+        eye.classList.replace('fa-eye', 'fa-eye-slash');
+      } else {
+        input.type = 'password';
+        eye.classList.replace('fa-eye-slash', 'fa-eye');
+      }
+    }
+  }
+</script>
+</body>
+</html>
+
+
+
+
+
+

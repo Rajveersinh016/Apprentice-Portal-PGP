@@ -1,0 +1,1098 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PGP Glass Apprentice Portal â€” Web Flow Documentation</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --brand: #0078d4;
+      --brand-light: #eff6ff;
+      --success: #059669;
+      --danger: #dc2626;
+      --warning: #d97706;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #94a3b8;
+      --border: #e2e8f0;
+      --surface: #f8fafc;
+      --radius: 10px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: white;
+      color: var(--text-primary);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    /* â”€â”€ COVER PAGE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .cover {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0078d4 100%);
+      color: white;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 60px 40px;
+      page-break-after: always;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cover::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -20%;
+      width: 700px;
+      height: 700px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.04);
+      pointer-events: none;
+    }
+
+    .cover::after {
+      content: '';
+      position: absolute;
+      bottom: -30%;
+      left: -10%;
+      width: 500px;
+      height: 500px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.03);
+      pointer-events: none;
+    }
+
+    .cover-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.25);
+      padding: 6px 20px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 32px;
+    }
+
+    .cover-logo {
+      width: 80px;
+      height: 80px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 32px;
+      font-size: 36px;
+      border: 2px solid rgba(255,255,255,0.25);
+    }
+
+    .cover h1 {
+      font-size: 42px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 16px;
+    }
+
+    .cover h1 span {
+      color: #60a5fa;
+    }
+
+    .cover p {
+      font-size: 16px;
+      color: rgba(255,255,255,0.7);
+      max-width: 540px;
+      margin: 0 auto 48px;
+      line-height: 1.7;
+    }
+
+    .cover-meta {
+      display: flex;
+      gap: 40px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .cover-meta-item {
+      text-align: center;
+    }
+
+    .cover-meta-item .label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 4px;
+    }
+
+    .cover-meta-item .value {
+      font-size: 15px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.9);
+    }
+
+    /* â”€â”€ CONTENT LAYOUT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .content {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 40px 40px;
+    }
+
+    /* â”€â”€ SECTION HEADERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .section {
+      margin-bottom: 48px;
+      page-break-inside: avoid;
+    }
+
+    .section-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      background: var(--brand);
+      color: white;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-right: 10px;
+      flex-shrink: 0;
+    }
+
+    h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--brand);
+    }
+
+    h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 20px 0 12px;
+    }
+
+    p {
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+    }
+
+    /* â”€â”€ CARDS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 16px;
+      background: white;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .card-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      flex-shrink: 0;
+    }
+
+    /* â”€â”€ TABLES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+      font-size: 12.5px;
+    }
+
+    th {
+      background: var(--surface);
+      color: var(--text-secondary);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 10.5px;
+      letter-spacing: 0.06em;
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 2px solid var(--border);
+    }
+
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-primary);
+      vertical-align: top;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    tr:nth-child(even) td { background: #fafbfc; }
+
+    td.center { text-align: center; }
+
+    .tick { color: var(--success); font-weight: 700; }
+    .cross { color: var(--danger); font-weight: 700; }
+
+    /* â”€â”€ BADGES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge-blue { background: #dbeafe; color: #1d4ed8; }
+    .badge-green { background: #d1fae5; color: var(--success); }
+    .badge-red { background: #fee2e2; color: var(--danger); }
+    .badge-amber { background: #fef3c7; color: var(--warning); }
+    .badge-purple { background: #ede9fe; color: #7c3aed; }
+    .badge-gray { background: #f1f5f9; color: #475569; }
+
+    /* â”€â”€ FLOW STEPS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .flow-steps {
+      counter-reset: step;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .flow-step {
+      display: flex;
+      gap: 16px;
+      position: relative;
+    }
+
+    .flow-step-left {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 36px;
+      flex-shrink: 0;
+    }
+
+    .flow-step-num {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--brand);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .flow-step-line {
+      width: 2px;
+      flex: 1;
+      background: #e2e8f0;
+      margin: 4px 0;
+      min-height: 24px;
+    }
+
+    .flow-step:last-child .flow-step-line { display: none; }
+
+    .flow-step-body {
+      flex: 1;
+      padding-bottom: 20px;
+    }
+
+    .flow-step-title {
+      font-weight: 600;
+      color: var(--text-primary);
+      font-size: 13.5px;
+      margin-bottom: 4px;
+    }
+
+    .flow-step-desc {
+      color: var(--text-secondary);
+      font-size: 12.5px;
+      line-height: 1.6;
+    }
+
+    /* â”€â”€ ROLE BLOCKS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .role-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .role-card {
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .role-card.super { border-color: #bfdbfe; background: #f0f7ff; }
+    .role-card.branch { border-color: #bbf7d0; background: #f0fdf4; }
+
+    .role-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .role-perm {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 7px;
+      font-size: 12.5px;
+      color: var(--text-secondary);
+    }
+
+    .perm-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+
+    /* â”€â”€ CREDENTIAL BOX â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .cred-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .cred-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+    }
+
+    .cred-role {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--brand);
+      margin-bottom: 6px;
+    }
+
+    .cred-email {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      word-break: break-all;
+      margin-bottom: 3px;
+    }
+
+    .cred-pw {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+
+    /* â”€â”€ DATA MODEL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .data-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .field-group {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .field-group-header {
+      background: var(--surface);
+      padding: 10px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .field-item {
+      padding: 8px 14px;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 12px;
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    .field-item:last-child { border-bottom: none; }
+
+    .field-name {
+      font-weight: 600;
+      color: var(--text-primary);
+      min-width: 160px;
+      font-family: 'Courier New', monospace;
+      font-size: 11.5px;
+    }
+
+    .field-desc { color: var(--text-secondary); }
+
+    /* â”€â”€ PAGE BREAK â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .page-break { page-break-before: always; padding-top: 40px; }
+
+    /* â”€â”€ LIFECYCLE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .lifecycle {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+
+    .lifecycle-step {
+      flex: 1;
+      min-width: 180px;
+      background: white;
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      text-align: center;
+      position: relative;
+    }
+
+    .lifecycle-step.active-step { border-color: #bfdbfe; background: #eff6ff; }
+    .lifecycle-step.completed-step { border-color: #bbf7d0; background: #f0fdf4; }
+
+    .lifecycle-arrow {
+      font-size: 24px;
+      color: var(--text-muted);
+      padding: 0 8px;
+    }
+
+    .lifecycle-icon { font-size: 28px; margin-bottom: 8px; }
+    .lifecycle-label { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+    .lifecycle-sub { font-size: 11px; color: var(--text-secondary); }
+
+    /* â”€â”€ ALERT BOX â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .alert {
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      gap: 10px;
+      font-size: 12.5px;
+    }
+
+    .alert-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; }
+    .alert-warning { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+
+    /* â”€â”€ MERMAID WRAPPER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .diagram-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 20px;
+      text-align: center;
+      overflow-x: auto;
+    }
+
+    .diagram-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      text-align: left;
+    }
+
+    /* â”€â”€ FOOTER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .doc-footer {
+      text-align: center;
+      padding: 32px 40px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 11px;
+      margin-top: 40px;
+    }
+
+    /* â”€â”€ PRINT STYLES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    @media print {
+      body { font-size: 11px; }
+      .cover { min-height: 100vh; }
+      .no-print { display: none; }
+      h2 { font-size: 17px; }
+      .role-grid { grid-template-columns: 1fr 1fr; }
+      .cred-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<!-- COVER PAGE                                     -->
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<div class="cover">
+  <div class="cover-badge">ðŸ“„ Internal Technical Documentation</div>
+  <div class="cover-logo">ðŸ­</div>
+  <h1>PGP Glass<br><span>Apprentice Portal</span></h1>
+  <p>Complete Web Flow Documentation â€” System Architecture, Role Permissions, Data Lifecycle, and Workflow Guide</p>
+  <div class="cover-meta">
+    <div class="cover-meta-item">
+      <div class="label">Document Type</div>
+      <div class="value">Web Flow Guide</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="label">Version</div>
+      <div class="value">v2.0</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="label">Date</div>
+      <div class="value">June 2026</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="label">Prepared For</div>
+      <div class="value">PGP Glass HR Team</div>
+    </div>
+  </div>
+</div>
+
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<!-- MAIN CONTENT                                   -->
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<div class="content">
+
+  <!-- â”€â”€ 1. OVERVIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+  <div class="section">
+    <h2><span class="section-number">1</span> System Overview</h2>
+    <p>The PGP Glass Apprentice Portal is a centralized, browser-based data management system for tracking apprentice records across all PGP Glass factory locations. It provides role-based access control with exactly <strong>two user roles</strong> and enforces strict data governance.</p>
+
+    <div class="role-grid">
+      <div class="role-card super">
+        <div class="role-title">ðŸ‘‘ Super HR</div>
+        <div class="role-perm"><span class="perm-icon">âœ…</span> Full access to all branches</div>
+        <div class="role-perm"><span class="perm-icon">âœ…</span> Upload & import Excel master data</div>
+        <div class="role-perm"><span class="perm-icon">âœ…</span> Fill Contract ID, Portal Enrollment, Portal Name</div>
+        <div class="role-perm"><span class="perm-icon">âœ…</span> Manage users, view analytics</div>
+        <div class="role-perm"><span class="perm-icon">âœ…</span> Export reports for any location</div>
+        <div class="role-perm"><span class="perm-icon">âŒ</span> Cannot mark apprentice completed</div>
+      </div>
+      <div class="role-card branch">
+        <div class="role-title">ðŸ­ Branch HR</div>
+        <div class="role-perm"><span class="perm-icon">âœ…</span> Sees only own branch data</div>
+        <div class="role-perm"><span class="perm-icon">âœ…</span> Mark active apprentices as Completed</div>
+        <div class="role-perm"><span class="perm-icon">âœ…</span> Export branch-specific reports</div>
+        <div class="role-perm"><span class="perm-icon">âŒ</span> Cannot upload or edit master data</div>
+        <div class="role-perm"><span class="perm-icon">âŒ</span> Cannot access analytics or user management</div>
+        <div class="role-perm"><span class="perm-icon">âŒ</span> Branch filter is locked â€” cannot change</div>
+      </div>
+    </div>
+
+    <div class="alert alert-info">
+      <strong>ðŸ”’ Storage:</strong> This is a client-side application. All data is stored in <code>localStorage</code> under three keys: <code>pgp_apprentices</code>, <code>pgp_users</code>, <code>pgp_audit</code>. Database version is tracked as <code>pgp_db_version</code> (current: <strong>v2.0</strong>).
+    </div>
+  </div>
+
+  <!-- â”€â”€ 2. SITE MAP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+  <div class="section">
+    <h2><span class="section-number">2</span> Site Map &amp; Page Access</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Page</th>
+          <th>URL</th>
+          <th style="text-align:center">Super HR</th>
+          <th style="text-align:center">Branch HR</th>
+          <th>Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>ðŸ” <strong>Login</strong></td>
+          <td><code>index.html</code></td>
+          <td class="center tick">âœ…</td>
+          <td class="center tick">âœ…</td>
+          <td>Authentication entry point</td>
+        </tr>
+        <tr>
+          <td>ðŸ“Š <strong>Dashboard</strong></td>
+          <td><code>pages/dashboard.html</code></td>
+          <td class="center tick">âœ… All</td>
+          <td class="center tick">âœ… Branch</td>
+          <td>KPI cards, recent activity, charts</td>
+        </tr>
+        <tr>
+          <td>ðŸ‘¥ <strong>Apprentices</strong></td>
+          <td><code>pages/apprentices.html</code></td>
+          <td class="center tick">âœ… All</td>
+          <td class="center tick">âœ… Branch</td>
+          <td>Active & Completed registry with drawer editing</td>
+        </tr>
+        <tr>
+          <td>ðŸ”Ž <strong>Detail View</strong></td>
+          <td><code>pages/apprentice-detail.html</code></td>
+          <td class="center tick">âœ… All</td>
+          <td class="center tick">âœ… Branch</td>
+          <td>Full apprentice profile with timeline</td>
+        </tr>
+        <tr>
+          <td>ðŸ“¤ <strong>Excel Upload</strong></td>
+          <td><code>pages/upload.html</code></td>
+          <td class="center tick">âœ…</td>
+          <td class="center cross">âŒ Blocked</td>
+          <td>Import apprentice master data from spreadsheets</td>
+        </tr>
+        <tr>
+          <td>ðŸ“ˆ <strong>Analytics</strong></td>
+          <td><code>pages/analytics.html</code></td>
+          <td class="center tick">âœ…</td>
+          <td class="center cross">âŒ Blocked</td>
+          <td>6 analytical charts across all dimensions</td>
+        </tr>
+        <tr>
+          <td>ðŸ“¥ <strong>Reports</strong></td>
+          <td><code>pages/reports.html</code></td>
+          <td class="center tick">âœ… All</td>
+          <td class="center tick">âœ… Branch-locked</td>
+          <td>Configurable CSV/Excel/PDF export</td>
+        </tr>
+        <tr>
+          <td>ðŸ‘¤ <strong>Users</strong></td>
+          <td><code>pages/users.html</code></td>
+          <td class="center tick">âœ…</td>
+          <td class="center cross">âŒ Blocked</td>
+          <td>Add, edit, activate/deactivate user accounts</td>
+        </tr>
+        <tr>
+          <td>âš™ï¸ <strong>Settings</strong></td>
+          <td><code>pages/settings.html</code></td>
+          <td class="center tick">âœ…</td>
+          <td class="center tick">âœ…</td>
+          <td>Notification and auto-logout preferences</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- â”€â”€ 3. AUTH FLOW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+  <div class="section page-break">
+    <h2><span class="section-number">3</span> Authentication Flow</h2>
+
+    <div class="flow-steps">
+      <div class="flow-step">
+        <div class="flow-step-left">
+          <div class="flow-step-num">1</div>
+          <div class="flow-step-line"></div>
+        </div>
+        <div class="flow-step-body">
+          <div class="flow-step-title">User Opens Portal</div>
+          <div class="flow-step-desc">Browser loads <code>index.html</code>. The login form is displayed with email + password fields. No session checks at this point.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-step-left">
+          <div class="flow-step-num">2</div>
+          <div class="flow-step-line"></div>
+        </div>
+        <div class="flow-step-body">
+          <div class="flow-step-title">Credential Validation</div>
+          <div class="flow-step-desc">On form submit, <code>handleFormLogin()</code> looks up the submitted email + password against <code>AppDB.getUsers()</code> (localStorage). If no match â†’ error toast is shown + form shakes. If matched â†’ proceed.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-step-left">
+          <div class="flow-step-num">3</div>
+          <div class="flow-step-line"></div>
+        </div>
+        <div class="flow-step-body">
+          <div class="flow-step-title">Session Creation</div>
+          <div class="flow-step-desc">Two values are written to <code>localStorage</code>:<br>
+          &bull; <code>pgp_role</code> = <code>'Super HR'</code> or <code>'Branch HR'</code><br>
+          &bull; <code>pgp_branch</code> = <code>'All Locations'</code> (Super HR) or the user's location (e.g., <code>'Kosamba'</code>) (Branch HR)</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-step-left">
+          <div class="flow-step-num">4</div>
+          <div class="flow-step-line"></div>
+        </div>
+        <div class="flow-step-body">
+          <div class="flow-step-title">DB Initialization</div>
+          <div class="flow-step-desc"><code>AppDB.init()</code> runs on every page load. It checks <code>pgp_db_version</code> against the current version (<strong>v2.0</strong>). If outdated, localStorage is flushed and re-seeded with fresh default data.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-step-left">
+          <div class="flow-step-num">5</div>
+          <div class="flow-step-line"></div>
+        </div>
+        <div class="flow-step-body">
+          <div class="flow-step-title">Navigation Guard</div>
+          <div class="flow-step-desc">Every non-login page checks for a valid session on load. If <code>pgp_role</code> is missing â†’ redirect to <code>index.html</code>. If Branch HR tries to access a restricted page â†’ "Access Restricted" screen is rendered.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-step-left">
+          <div class="flow-step-num">6</div>
+          <div class="flow-step-line"></div>
+        </div>
+        <div class="flow-step-body">
+          <div class="flow-step-title">Shell Rendering</div>
+          <div class="flow-step-desc"><code>AppShell.renderSidebar()</code> builds role-filtered nav. Super HR sees all 7 links. Branch HR sees: Dashboard, Apprentices, Reports, Settings only. <code>AppShell.renderTopNav()</code> shows branch selector (Super HR) or fixed branch pill (Branch HR).</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-step-left">
+          <div class="flow-step-num">7</div>
+          <div class="flow-step-line"></div>
+        </div>
+        <div class="flow-step-body">
+          <div class="flow-step-title">Page Controller Init</div>
+          <div class="flow-step-desc">The correct page controller is initialized based on URL path. Each controller fetches data, applies role-based filters, and renders the page UI.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- â”€â”€ 4. SUPER HR WORKFLOW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+  <div class="section page-break">
+    <h2><span class="section-number">4</span> Super HR â€” Complete Workflow</h2>
+
+    <h3>4.1 Excel Upload &amp; Import</h3>
+    <div class="flow-steps">
+      <div class="flow-step">
+        <div class="flow-step-left"><div class="flow-step-num">1</div><div class="flow-step-line"></div></div>
+        <div class="flow-step-body">
+          <div class="flow-step-title">Navigate to Excel Upload</div>
+          <div class="flow-step-desc">Click "Excel Upload" in the sidebar. Page: <code>upload.html</code>. Branch HR attempting this URL sees an "Access Restricted" screen.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-step-left"><div class="flow-step-num">2</div><div class="flow-step-line"></div></div>
+        <div class="flow-step-body">
+          <div class="flow-step-title">Upload File</div>
+          <div class="flow-step-desc">Drag & drop or click "Browse Local Files" to select an <strong>.xlsx, .xls, or .csv</strong> file. Max 8MB. Invalid formats show an error toast.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-step-left"><div class="flow-step-num">3</div><div class="flow-step-line"></div></div>
+        <div class="flow-step-body">
+          <div class="flow-step-title">Processing Animation</div>
+          <div class="flow-step-desc">A progress bar fills from 0% â†’ 100% while the file is analyzed. Header format and row integrity are checked.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-step-left"><div class="flow-step-num">4</div><div class="flow-step-line"></div></div>
+        <div class="flow-step-body">
+          <div class="flow-step-title">Validation Report</div>
+          <div class="flow-step-desc">A report shows: <span class="badge badge-green">âœ“ Success Rows</span> <span class="badge badge-red">âœ— Error Rows</span> <span class="badge badge-amber">âš  Duplicates</span>. A detailed table lists each issue by row number.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-step-left"><div class="flow-step-num">5</div><div class="flow-step-line"></div></div>
+        <div class="flow-step-body">
+          <div class="flow-step-title">Confirm &amp; Import (Upsert Logic)</div>
+          <div class="flow-step-desc">
+            <strong>Employee Code is the unique key.</strong><br>
+            &bull; <strong>Existing record</strong>: Updates demographic fields (name, location, dept, phone, etc.). <em>Preserves</em> contractId, portalEnrollmentNumber, portalName, remarks.<br>
+            &bull; <strong>New record</strong>: Inserts with all fields. Sets contractId = <code>'Pending'</code>, portalEnrollmentNumber = <code>'Pending'</code>, portalName = <code>'Pending'</code>, status = <code>'Active'</code>.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3>4.2 Fill Manual Portal Fields (Side Drawer)</h3>
+    <div class="flow-steps">
+      <div class="flow-step">
+        <div class="flow-step-left"><div class="flow-step-num">1</div><div class="flow-step-line"></div></div>
+        <div class="flow-step-body">
+          <div class="flow-step-title">Open Apprentice Drawer</div>
+          <div class="flow-step-desc">In <code>apprentices.html</code>, click the ðŸ‘ eye icon on any active apprentice row. A side drawer slides in from the right.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-step-left"><div class="flow-step-num">2</div><div class="flow-step-line"></div></div>
+        <div class="flow-step-body">
+          <div class="flow-step-title">Editable Fields (Super HR Only)</div>
+          <div class="flow-step-desc">Super HR sees 4 editable fields:<br>
+          &bull; <strong>Employee Contract ID</strong> â€” NAPS/NATS contract code<br>
+          &bull; <strong>Portal Enrollment Number</strong> â€” Government portal enrollment ID<br>
+          &bull; <strong>Portal Registered Name</strong> â€” Name as on government portal<br>
+          &bull; <strong>Remarks</strong> â€” Free-form notes<br>
+          <em>The employee's status cannot be changed from this drawer.</em></div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-step-left"><div class="flow-step-num">3</div><div class="flow-step-line"></div></div>
+        <div class="flow-step-body">
+          <div class="flow-step-title">Save or Save &amp; Next</div>
+          <div class="flow-step-desc"><strong>Save</strong>: Commits changes and closes drawer. <strong>Save &amp; Next</strong>: Commits and auto-advances to the next apprentice in the list â€” ideal for batch-processing pending records.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- â”€â”€ 5. BRANCH HR WORKFLOW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+  <div class="section page-break">
+    <h2><span class="section-number">5</span> Branch HR â€” Complete Workflow</h2>
+
+    <div class="alert alert-warning">
+      âš ï¸ Branch HR always sees only their own branch data. The location filter is permanently locked to their assigned factory. They cannot view or modify apprentices from other branches.
+    </div>
+
+    <div class="flow-steps">
+      <div class="flow-step">
+        <div class="flow-step-left"><div class="flow-step-num">1</div><div class="flow-step-line"></div></div>
+        <div class="flow-step-body">
+          <div class="flow-step-title">Login &amp; Dashboard</div>
+          <div class="flow-step-desc">Branch HR logs in. The dashboard shows 3 KPI cards only: <strong>Total Branch Apprentices</strong>, <strong>Active</strong>, <strong>Completed</strong>. Charts are hidden. The sidebar shows 4 links only: Dashboard, Apprentices, Reports, Settings.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-step-left"><div class="flow-step-num">2</div><div class="flow-step-line"></div></div>
+        <div class="flow-step-body">
+          <div class="flow-step-title">View Active Apprentices</div>
+          <div class="flow-step-desc">Navigate to <code>apprentices.html</code>. Only records from their assigned branch are listed. The Active tab shows all current trainees. Fields include Contract ID and Portal Enrollment Number (read-only).</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-step-left"><div class="flow-step-num">3</div><div class="flow-step-line"></div></div>
+        <div class="flow-step-body">
+          <div class="flow-step-title">Open Apprentice (Read-Only Drawer)</div>
+          <div class="flow-step-desc">Click ðŸ‘ on any apprentice. The drawer opens in <strong>read-only mode</strong> â€” all Super HR fields (Contract ID, Portal Number, Portal Name, Remarks) are displayed as plain text, not input boxes.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-step-left"><div class="flow-step-num">4</div><div class="flow-step-line"></div></div>
+        <div class="flow-step-body">
+          <div class="flow-step-title">Mark Apprentice Completed</div>
+          <div class="flow-step-desc">For active apprentices, a <span class="badge badge-green">âœ“ Mark Completed</span> button appears in the drawer footer. Click it â†’ a confirmation modal appears: <em>"Are you sure you want to sign off on [Name]'s apprentice completion?"</em></div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-step-left"><div class="flow-step-num">5</div><div class="flow-step-line"></div></div>
+        <div class="flow-step-body">
+          <div class="flow-step-title">Sign Off Confirmation</div>
+          <div class="flow-step-desc">On confirm: <code>status = 'Completed'</code>, <code>completionDate = today</code>, <code>completedBy = '[Branch] HR Lead'</code> are saved. An audit log entry is created. The apprentice moves to the <strong>Completed tab</strong> and their profile is locked for further edits.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-step-left"><div class="flow-step-num">6</div><div class="flow-step-line"></div></div>
+        <div class="flow-step-body">
+          <div class="flow-step-title">Export Branch Reports</div>
+          <div class="flow-step-desc">Navigate to <code>reports.html</code>. The location dropdown is locked to their branch. They can filter by department/status/date and export as CSV, Excel, or PDF (text) format.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- â”€â”€ 6. APPRENTICE LIFECYCLE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+  <div class="section page-break">
+    <h2><span class="section-number">6</span> Apprentice Data Lifecycle</h2>
+
+    <div class="lifecycle">
+      <div class="lifecycle-step active-step">
+        <div class="lifecycle-icon">ðŸ“</div>
+        <div class="lifecycle-label">Excel Import</div>
+        <div class="lifecycle-sub">Super HR uploads .xlsx<br>Status set to <strong>Active</strong><br>Manual fields = Pending</div>
+      </div>
+      <div class="lifecycle-arrow">â†’</div>
+      <div class="lifecycle-step active-step">
+        <div class="lifecycle-icon">âœï¸</div>
+        <div class="lifecycle-label">Profile Enrichment</div>
+        <div class="lifecycle-sub">Super HR fills:<br>Contract ID<br>Portal Enrollment No.<br>Portal Name</div>
+      </div>
+      <div class="lifecycle-arrow">â†’</div>
+      <div class="lifecycle-step active-step">
+        <div class="lifecycle-icon">ðŸ­</div>
+        <div class="lifecycle-label">Active Training</div>
+        <div class="lifecycle-sub">Branch HR monitors<br>progress at their<br>factory location</div>
+      </div>
+      <div class="lifecycle-arrow">â†’</div>
+      <div class="lifecycle-step completed-step">
+        <div class="lifecycle-icon">ðŸŽ“</div>
+        <div class="lifecycle-label">Program Completed</div>
+        <div class="lifecycle-sub">Branch HR signs off<br>Profile locked (read-only)<br>Moves to Completed tab</div>
+      </div>
+    </div>
+
+    <h3>6.1 Status Values</h3>
+    <table>
+      <thead>
+        <tr><th>Status</th><th>Set By</th><th>Trigger</th><th>Effect</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-green">â— Active</span></td>
+          <td>System (Excel Import)</td>
+          <td>New record inserted via upload</td>
+          <td>Appears in Active tab; Super HR can edit manual fields; Branch HR can mark completed</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">â— Completed</span></td>
+          <td>Branch HR</td>
+          <td>Mark Completed action confirmed</td>
+          <td>Moves to Completed tab; all editing locked; completionDate + completedBy recorded</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>6.2 Field Ownership</h3>
+    <div class="data-grid">
+      <div class="field-group">
+        <div class="field-group-header">ðŸ“ Excel-Sourced Fields (Read-Only in Portal)</div>
+        <div class="field-item"><span class="field-name">code</span><span class="field-desc">Unique employee identifier â€” never overwritten</span></div>
+        <div class="field-item"><span class="field-name">name</span><span class="field-desc">Full name â€” updated on re-upload</span></div>
+        <div class="field-item"><span class="field-name">location</span><span class="field-desc">Factory/branch assignment</span></div>
+        <div class="field-item"><span class="field-name">dept</span><span class="field-desc">Department (Production, QA, etc.)</span></div>
+        <div class="field-item"><span class="field-name">joined</span><span class="field-desc">Program start date (YYYY-MM-DD)</span></div>
+        <div class="field-item"><span class="field-name">sex, age, phone, email, address</span><span class="field-desc">Demographic details</span></div>
+      </div>
+      <div class="field-group">
+        <div class="field-group-header">âœï¸ Super HR Manual Fields (Never Overwritten by Excel)</div>
+        <div class="field-item"><span class="field-name">contractId</span><span class="field-desc">NAPS/NATS contract code (default: 'Pending')</span></div>
+        <div class="field-item"><span class="field-name">portalEnrollmentNumber</span><span class="field-desc">Government portal enrollment ID (default: 'Pending')</span></div>
+        <div class="field-item"><span class="field-name">portalName</span><span class="field-desc">Name as registered on NAPS/NATS portal</span></div>
+        <div class="field-item"><span class="field-name">remarks</span><span class="field-desc">Free-form notes from Super HR</span></div>
+        <div class="field-group-header" style="margin-top:0">ðŸ­ Branch HR Completion Fields</div>
+        <div class="field-item"><span class="field-name">status</span><span class="field-desc">Active â†’ Completed (Branch HR only)</span></div>
+        <div class="field-item"><span class="field-name">completionDate</span><span class="field-desc">Date of sign-off (auto: today)</span></div>
+        <div class="field-item"><span class="field-name">completedBy</span><span class="field-desc">e.g., 'Kosamba HR Lead'</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- â”€â”€ 7. PERMISSIONS MATRIX â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+  <div class="section page-break">
+    <h2><span class="section-number">7</span> Complete Role Permissions Matrix</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Feature / Page</th>
+          <th style="text-align:center">Super HR</th>
+          <th style="text-align:center">Branch HR</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Dashboard â€” View KPI Cards</td><td class="center tick">âœ… 7 cards</td><td class="center tick">âœ… 3 cards</td><td>Branch HR sees branch totals only</td></tr>
+        <tr><td>Dashboard â€” Analytics Charts</td><td class="center tick">âœ…</td><td class="center cross">âŒ</td><td>Charts hidden for Branch HR</td></tr>
+        <tr><td>Dashboard â€” Branch Filter Dropdown</td><td class="center tick">âœ… Can switch</td><td class="center cross">âŒ Locked</td><td>Branch HR sees own branch pill only</td></tr>
+        <tr><td>Apprentices â€” View Active</td><td class="center tick">âœ… All</td><td class="center tick">âœ… Branch</td><td>Filtered by role automatically</td></tr>
+        <tr><td>Apprentices â€” View Completed</td><td class="center tick">âœ… All</td><td class="center tick">âœ… Branch</td><td>Filtered by role automatically</td></tr>
+        <tr><td>Drawer â€” Edit Contract ID</td><td class="center tick">âœ…</td><td class="center cross">âŒ Read-only</td><td>Super HR active apprentices only</td></tr>
+        <tr><td>Drawer â€” Edit Portal Enrollment No.</td><td class="center tick">âœ…</td><td class="center cross">âŒ Read-only</td><td>Text input, not a dropdown</td></tr>
+        <tr><td>Drawer â€” Edit Portal Name</td><td class="center tick">âœ…</td><td class="center cross">âŒ Read-only</td><td>Super HR active apprentices only</td></tr>
+        <tr><td>Drawer â€” Edit Remarks</td><td class="center tick">âœ…</td><td class="center cross">âŒ Read-only</td><td>Super HR active apprentices only</td></tr>
+        <tr><td>Drawer â€” Mark Completed</td><td class="center cross">âŒ</td><td class="center tick">âœ… Own branch</td><td>Branch HR can only complete, not edit manual fields</td></tr>
+        <tr><td>Drawer â€” Change Status/Lifecycle</td><td class="center cross">âŒ</td><td class="center cross">âŒ</td><td>Status changed only via "Mark Completed" by Branch HR</td></tr>
+        <tr><td>Excel Upload Page</td><td class="center tick">âœ…</td><td class="center cross">âŒ Access Denied</td><td>URL-level guard enforced by AppDB</td></tr>
+        <tr><td>Analytics Page</td><td class="center tick">âœ…</td><td class="center cross">âŒ Access Denied</td><td>URL-level guard enforced by AppDB</td></tr>
+        <tr><td>Reports â€” Export CSV/Excel/PDF</td><td class="center tick">âœ… All locations</td><td class="center tick">âœ… Branch-locked</td><td>Location dropdown disabled for Branch HR</td></tr>
+        <tr><td>User Management Page</td><td class="center tick">âœ…</td><td class="center cross">âŒ Access Denied</td><td>URL-level guard enforced by AppDB</td></tr>
+        <tr><td>Settings Page</td><td class="center tick">âœ…</td><td class="center tick">âœ…</td><td>Notification + auto-logout preferences</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- â”€â”€ 8. CREDENTIALS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+  <div class="section page-break">
+    <h2><span class="section-number">8</span> Default Login Credentials</h2>
+    <p>The following accounts are pre-seeded into localStorage on first load (or after a DB version bump).</p>
+
+    <div class="cred-grid">
+      <div class="cred-card">
+        <div class="cred-role">ðŸ‘‘ Super HR</div>
+        <div class="cred-email">superhr@pgpglass.com</div>
+        <div class="cred-pw">Password: password123</div>
+      </div>
+      <div class="cred-card">
+        <div class="cred-role">ðŸ­ Branch HR â€” Kosamba</div>
+        <div class="cred-email">kosamba.hr@pgpglass.com</div>
+        <div class="cred-pw">Password: password123</div>
+      </div>
+      <div class="cred-card">
+        <div class="cred-role">ðŸ­ Branch HR â€” Halol</div>
+        <div class="cred-email">halol.hr@pgpglass.com</div>
+        <div class="cred-pw">Password: password123</div>
+      </div>
+      <div class="cred-card">
+        <div class="cred-role">ðŸ­ Branch HR â€” Jambusar</div>
+        <div class="cred-email">jambusar.hr@pgpglass.com</div>
+        <div class="cred-pw">Password: password123</div>
+      </div>
+      <div class="cred-card">
+        <div class="cred-role">ðŸ­ Branch HR â€” Vadodara</div>
+        <div class="cred-email">vadodara.hr@pgpglass.com</div>
+        <div class="cred-pw">Password: password123</div>
+      </div>
+    </div>
+
+    <div class="alert alert-warning" style="margin-top:20px">
+      âš ï¸ These are demo credentials for the localStorage-backed system. In a production database-backed deployment, credentials must be stored securely with hashed passwords.
+    </div>
+  </div>
+
+  <!-- â”€â”€ 9. BRANCH COVERAGE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+  <div class="section">
+    <h2><span class="section-number">9</span> Factory Locations</h2>
+    <table>
+      <thead>
+        <tr><th>Branch Name</th><th>Location Key</th><th>HR Login</th><th>Data Scope</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>ðŸ­ Kosamba Factory</td><td><code>Kosamba</code></td><td>kosamba.hr@pgpglass.com</td><td>Kosamba apprentices only</td></tr>
+        <tr><td>ðŸ­ Halol Factory</td><td><code>Halol</code></td><td>halol.hr@pgpglass.com</td><td>Halol apprentices only</td></tr>
+        <tr><td>ðŸ­ Jambusar Center</td><td><code>Jambusar</code></td><td>jambusar.hr@pgpglass.com</td><td>Jambusar apprentices only</td></tr>
+        <tr><td>ðŸ­ Vadodara Center</td><td><code>Vadodara</code></td><td>vadodara.hr@pgpglass.com</td><td>Vadodara apprentices only</td></tr>
+        <tr><td>ðŸ‘‘ Super HR (all)</td><td><code>All Locations</code></td><td>superhr@pgpglass.com</td><td>All 4 branches visible</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- â”€â”€ PRINT BUTTON â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+  <div style="text-align:center; margin: 40px 0;" class="no-print">
+    <button onclick="window.print()" style="background:#0078d4;color:white;border:none;padding:14px 36px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;box-shadow:0 4px 12px rgba(0,120,212,0.3);">
+      ðŸ–¨ï¸ Print / Save as PDF
+    </button>
+    <p style="margin-top:12px;font-size:12px;color:#94a3b8;">Use <strong>Ctrl+P</strong> â†’ Save as PDF â†’ Set margins to Minimum</p>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="doc-footer">
+  PGP Glass Industries Ltd. â€” Apprentice Portal v2.0 | Web Flow Documentation | June 2026 | For Internal Use Only
+</div>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'neutral', securityLevel: 'loose' });
+</script>
+
+</body>
+</html>
+

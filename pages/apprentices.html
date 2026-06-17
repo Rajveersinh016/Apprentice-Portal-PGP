@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apprentices &mdash; PGP Glass Apprentice Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="../assets/css/main.css?v=2.0">
+  <link rel="stylesheet" href="../assets/css/sidebar.css?v=2.0">
+  <link rel="stylesheet" href="../assets/css/components.css?v=2.0">
+  <link rel="stylesheet" href="../assets/css/responsive.css?v=2.0">
+  <style>
+    /* Styling resizing header */
+    .table-custom th {
+      position: relative;
+    }
+    .resize-handle:hover, .resize-handle.resizing {
+      background: var(--brand-primary) !important;
+      opacity: 1 !important;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Global Page Loader -->
+<div id="global-page-loader" class="global-page-loader">
+  <div class="loader-content">
+    <div class="loader-logo">P</div>
+    <div class="loader-title">PGP Glass</div>
+    <div class="loader-text">Loading... Please wait</div>
+    <div class="loader-spinner"></div>
+  </div>
+</div>
+
+<div class="app-wrapper">
+  <!-- Sidebar -->
+  <aside class="app-sidebar" id="app-sidebar"></aside>
+
+  <!-- Mobile Overlay -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <!-- Main Viewport -->
+  <main class="app-main" id="app-main">
+    <!-- Top Navigation Header -->
+    <header class="app-topnav" id="app-topnav"></header>
+
+    <!-- Page Content View -->
+    <div class="app-content animate-fadeIn">
+      
+      <!-- Page Header -->
+      <div class="page-header">
+        <div class="page-header-left">
+          <nav class="breadcrumb-custom" aria-label="Breadcrumb">
+            <a href="dashboard.html">Dashboard</a>
+            <span class="sep">/</span>
+            <span id="breadcrumb-active-tab">Apprentice Registry</span>
+          </nav>
+          <h1 class="page-title" id="page-title-header">Apprentice Master Database</h1>
+          <p class="page-subtitle" id="page-subtitle-header">Review compliance details, portal registration alignment, and contract parameters.</p>
+        </div>
+        <div class="page-header-actions">
+          <button class="btn-secondary-custom" id="export-table-btn">
+            <i class="fas fa-file-csv"></i> Export Table
+          </button>
+          <a href="upload.html" class="btn-primary-custom super-only-action">
+            <i class="fas fa-file-upload"></i> Excel Import
+          </a>
+        </div>
+      </div>
+
+      <!-- Tab Toggles -->
+      <div class="tabs-custom">
+        <button class="tab-item" id="tab-active" onclick="switchRegistryTab('active')">
+          Active Apprentices <span class="tab-badge" id="badge-count-active">0</span>
+        </button>
+        <button class="tab-item" id="tab-completed" onclick="switchRegistryTab('completed')">
+          Completed Apprentices <span class="tab-badge" id="badge-count-completed">0</span>
+        </button>
+      </div>
+
+      <!-- Main Enterprise Table Card -->
+      <div class="card-custom">
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+          <!-- Global Search -->
+          <div class="search-box">
+            <i class="fas fa-search search-icon"></i>
+            <input type="text" id="table-search" placeholder="Search by code, name, or contract..." aria-label="Global Search">
+          </div>
+
+          <!-- Dept Filter -->
+          <select class="filter-select" id="filter-dept" aria-label="Filter by Department">
+            <option value="">All Departments</option>
+            <option value="Production">Production</option>
+            <option value="Maintenance">Maintenance</option>
+            <option value="Quality Assurance">Quality Assurance</option>
+            <option value="Logistics">Logistics</option>
+            <option value="Engineering">Engineering</option>
+            <option value="HR">Human Resources</option>
+          </select>
+
+
+          <!-- Joining Date Range -->
+          <div class="filter-date-range">
+            <span class="text-xs text-secondary">Joined:</span>
+            <input type="date" id="filter-date-start" title="Joined from date" aria-label="Joined from date">
+            <span class="text-xs text-muted">to</span>
+            <input type="date" id="filter-date-end" title="Joined to date" aria-label="Joined to date">
+          </div>
+        </div>
+
+        <!-- Enterprise Table Content -->
+        <div class="table-wrapper">
+          <table class="table-custom">
+            <thead>
+              <tr id="table-header-row">
+                <th class="sortable" data-sort="code">Code <i class="fas fa-sort sort-icon"></i></th>
+                <th class="sortable" data-sort="name">Name <i class="fas fa-sort sort-icon"></i></th>
+                <th class="sortable" data-sort="location">Location <i class="fas fa-sort sort-icon"></i></th>
+                <th class="sortable" data-sort="dept">Department <i class="fas fa-sort sort-icon"></i></th>
+                <th class="sortable" data-sort="joined">Joined <i class="fas fa-sort sort-icon"></i></th>
+                <th class="sortable" data-sort="contractId">Contract ID <i class="fas fa-sort sort-icon"></i></th>
+                <th class="sortable" data-sort="portalEnrollmentNumber">Portal Enrollment Number <i class="fas fa-sort sort-icon"></i></th>
+                <th class="sortable" data-sort="portalName">Portal Name <i class="fas fa-sort sort-icon"></i></th>
+                <th class="sortable" data-sort="status">Status <i class="fas fa-sort sort-icon"></i></th>
+                <th class="col-actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="apprentices-tbody">
+              <!-- Rendered Dynamically via app.js -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination Controls Footer -->
+        <div class="pagination-custom">
+          <div class="pagination-info" id="pagination-info">Showing 0 to 0 of 0 entries</div>
+          <div class="pagination-controls" id="pagination-controls">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- Drawer removed since details are navigated to dedicated profile details page -->
+
+<!-- Scripts -->
+<script src="../assets/js/theme.js?v=2.0"></script>
+<script src="../assets/js/sidebar.js?v=2.0"></script>
+<script src="../assets/js/toast.js?v=2.0"></script>
+<script src="../assets/js/modal.js?v=2.0"></script>
+<script src="../assets/js/table.js?v=2.0"></script>
+<script src="../assets/js/app.js?v=2.0"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Hide Excel Import if Branch HR
+    if (AppDB.getRole() === 'Branch HR') {
+      document.querySelectorAll('.super-only-action').forEach(el => el.style.display = 'none');
+    }
+
+    // Set counts badge
+    updateTabBadges();
+    
+    // Build Table Header depending on Active/Completed page type
+    buildTableHeader();
+
+    window.addEventListener('branchchanged', () => {
+      updateTabBadges();
+    });
+
+    window.addEventListener('apprenticesupdated', () => {
+      updateTabBadges();
+    });
+  });
+
+  function updateTabBadges() {
+    const all = AppDB.getApprentices();
+    const branch = AppDB.getBranch();
+    const role = AppDB.getRole();
+    
+    let filtered = all;
+    if (role === 'Branch HR') {
+      filtered = all.filter(x => x.location === branch);
+    } else if (branch !== 'All Locations') {
+      filtered = all.filter(x => x.location === branch);
+    }
+
+    const activeCount = filtered.filter(x => x.status === 'Active').length;
+    const completedCount = filtered.filter(x => x.status === 'Completed').length;
+
+    document.getElementById('badge-count-active').innerText = activeCount;
+    document.getElementById('badge-count-completed').innerText = completedCount;
+  }
+
+  function buildTableHeader() {
+    const headerRow = document.getElementById('table-header-row');
+    const isCompleted = ApprenticesPage.pageType === 'completed';
+
+    // Set tab active state styles
+    document.getElementById('tab-active').classList.toggle('active', !isCompleted);
+    document.getElementById('tab-completed').classList.toggle('active', isCompleted);
+
+    // Dynamic headers depending on active/completed tabs
+    let headersHtml = `
+      <th class="sortable" data-sort="code">Code <i class="fas fa-sort sort-icon"></i></th>
+      <th class="sortable" data-sort="name">Name <i class="fas fa-sort sort-icon"></i></th>
+      <th class="sortable" data-sort="location">Location <i class="fas fa-sort sort-icon"></i></th>
+      <th class="sortable" data-sort="dept">Department <i class="fas fa-sort sort-icon"></i></th>
+      <th class="sortable" data-sort="joined">Joined <i class="fas fa-sort sort-icon"></i></th>
+      <th class="sortable" data-sort="contractId">Contract ID <i class="fas fa-sort sort-icon"></i></th>
+      <th class="sortable" data-sort="portalStatus">Portal Status <i class="fas fa-sort sort-icon"></i></th>
+    `;
+
+    if (isCompleted) {
+      headersHtml += `
+        <th class="sortable" data-sort="completionDate">Completed On <i class="fas fa-sort sort-icon"></i></th>
+        <th class="sortable" data-sort="completedBy">Signed By <i class="fas fa-sort sort-icon"></i></th>
+      `;
+      // Hide status filter options since everything is completed
+      const statusFilter = document.getElementById('filter-status');
+      if (statusFilter) statusFilter.style.display = 'none';
+      
+      document.getElementById('breadcrumb-active-tab').innerText = 'Completed Apprentices';
+      document.getElementById('page-title-header').innerText = 'Completed Apprentices Registry';
+      document.getElementById('page-subtitle-header').innerText = 'Historical log of signed-off candidates and program certificates.';
+    } else {
+      // Show status filters on active registry
+      const statusFilter = document.getElementById('filter-status');
+      if (statusFilter) statusFilter.style.display = 'block';
+
+      document.getElementById('breadcrumb-active-tab').innerText = 'Active Apprentices';
+      document.getElementById('page-title-header').innerText = 'Active Apprentice Registry';
+      document.getElementById('page-subtitle-header').innerText = 'Real-time master index of current apprentice tracks, portal registrations, and contract statuses.';
+    }
+
+    headersHtml += `
+      <th class="sortable" data-sort="status">Status <i class="fas fa-sort sort-icon"></i></th>
+      <th class="col-actions">Actions</th>
+    `;
+
+    headerRow.innerHTML = headersHtml;
+  }
+
+  function switchRegistryTab(type) {
+    ApprenticesPage.pageType = type;
+    history.replaceState(null, '', `apprentices.html?type=${type}`);
+    buildTableHeader();
+    ApprenticesPage.loadData();
+    ApprenticesPage.currentPage = 1;
+    ApprenticesPage.render();
+  }
+</script>
+</body>
+</html>
+
+
+
+
+
+
