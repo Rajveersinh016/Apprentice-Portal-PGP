@@ -258,6 +258,10 @@ function getSheetsClient() {
     throw new Error(`Google Sheets credentials file is still using placeholders. Please paste your real service account credentials.`);
   }
 
+  if (credentials && credentials.private_key) {
+    credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+  }
+
   const auth = new google.auth.GoogleAuth({
     credentials,
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],
