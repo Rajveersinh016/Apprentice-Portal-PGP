@@ -567,7 +567,7 @@
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authenticating...';
       errorEl.style.display = 'none';
 
-      const fallbackUrl = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
+      const fallbackUrl = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && window.location.hostname !== '[::1]' && window.location.hostname !== '::1'
         ? window.location.origin
         : 'http://localhost:3001';
       const backendUrl = localStorage.getItem('pgp_google_apps_script_url') || fallbackUrl;
@@ -605,7 +605,12 @@
       })
       .catch(err => {
         console.error("Login API Error:", err);
-        errMsg.textContent = err.message || 'Connection to backend database failed.';
+        let errorMsg = err.message || 'Connection to backend database failed.';
+        const customUrl = localStorage.getItem('pgp_google_apps_script_url');
+        if (customUrl) {
+          errorMsg += ` <br><span style="font-size: 11px; margin-top: 4px; display: inline-block;">Using custom API URL: <code>${customUrl}</code>. <a href="#" style="color: #93c5fd; text-decoration: underline;" onclick="localStorage.removeItem('pgp_google_apps_script_url'); window.location.reload(); return false;">Reset to Localhost</a></span>`;
+        }
+        errMsg.innerHTML = errorMsg;
         errorEl.style.display = 'flex';
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';

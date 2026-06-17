@@ -58,7 +58,7 @@ const isLocalOrigin = (origin) => {
     const url = new URL(origin);
     const host = url.hostname;
     // Allow any private/loopback IP or hostname on common dev ports
-    if (host === 'localhost' || host === '127.0.0.1') return true;
+    if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === '::1') return true;
     if (/^10\./.test(host)) return true;        // 10.x.x.x
     if (/^192\.168\./.test(host)) return true; // 192.168.x.x
     if (/^172\.(1[6-9]|2\d|3[01])\./.test(host)) return true; // 172.16-31.x.x

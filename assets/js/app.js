@@ -101,7 +101,7 @@ const AppDB = {
 
   // ── Helper: base URL for Express backend (set in Settings)
   getBackendUrl() {
-    const fallback = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
+    const fallback = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && window.location.hostname !== '[::1]' && window.location.hostname !== '::1'
       ? window.location.origin
       : 'http://localhost:3001';
     return (localStorage.getItem('pgp_google_apps_script_url') || fallback).replace(/\/$/, '');
