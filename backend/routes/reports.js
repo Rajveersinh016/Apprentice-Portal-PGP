@@ -71,7 +71,7 @@ function getApprenticeValue(app, header) {
     "Completion Remarks": app.completionRemarks,
     "Post Apprenticeship Status": app.postApprenticeshipStatus
   };
-  
+
   if (stdMap.hasOwnProperty(header)) {
     return stdMap[header];
   }
@@ -84,17 +84,17 @@ function getOrderedHeaders(allHeadersSet) {
   const hr = ["Employee Contract ID", "Portal Enrollment Number", "Portal Name"];
   const employment = ["Record Status", "Updated By", "Updated Date"];
   const completion = ["Completion Date", "Completed By", "Completion Reason", "Other Completion Reason", "Completion Remarks", "Post Apprenticeship Status"];
-  
+
   const ordered = [];
   const setCopy = new Set(allHeadersSet);
-  
+
   core.forEach(h => {
     if (setCopy.has(h)) {
       ordered.push(h);
       setCopy.delete(h);
     }
   });
-  
+
   hr.forEach(h => {
     if (setCopy.has(h)) {
       ordered.push(h);
@@ -119,62 +119,62 @@ function getOrderedHeaders(allHeadersSet) {
   setCopy.forEach(h => {
     ordered.push(h);
   });
-  
+
   return ordered;
 }
 
 // Filter engine matching pipeline
 function applyFilters(records, filters) {
   let filtered = [...records];
-  
+
   if (!filters) return filtered;
-  
+
   // 1. Search filter
   if (filters.search) {
     const q = String(filters.search).toLowerCase().trim();
     filtered = filtered.filter(x => {
       return (x.name || '').toLowerCase().includes(q) ||
-             (x.code || '').toLowerCase().includes(q) ||
-             (x.dept || '').toLowerCase().includes(q) ||
-             (x.location || '').toLowerCase().includes(q) ||
-             (x.phone || '').toLowerCase().includes(q) ||
-             (x.email || '').toLowerCase().includes(q) ||
-             (x.contractId || '').toLowerCase().includes(q) ||
-             (x.portalEnrollmentNumber || '').toLowerCase().includes(q) ||
-             (x.portalName || '').toLowerCase().includes(q);
+        (x.code || '').toLowerCase().includes(q) ||
+        (x.dept || '').toLowerCase().includes(q) ||
+        (x.location || '').toLowerCase().includes(q) ||
+        (x.phone || '').toLowerCase().includes(q) ||
+        (x.email || '').toLowerCase().includes(q) ||
+        (x.contractId || '').toLowerCase().includes(q) ||
+        (x.portalEnrollmentNumber || '').toLowerCase().includes(q) ||
+        (x.portalName || '').toLowerCase().includes(q);
     });
   }
-  
+
   // 2. Location filter
   if (filters.location && filters.location !== 'All Locations') {
     const loc = String(filters.location).toLowerCase().trim();
     filtered = filtered.filter(x => String(x.location).toLowerCase().trim() === loc);
   }
-  
+
   // 3. Department filter
   if (filters.dept && filters.dept !== 'All' && filters.dept !== '') {
     const dept = String(filters.dept).toLowerCase().trim();
     filtered = filtered.filter(x => String(x.dept).toLowerCase().trim() === dept);
   }
-  
+
   // 4. Status filter
   if (filters.status && filters.status !== 'All' && filters.status !== '') {
     const status = String(filters.status).toLowerCase().trim();
     filtered = filtered.filter(x => String(x.status).toLowerCase().trim() === status);
   }
-  
+
   // 5. Gender filter
   if (filters.gender && filters.gender !== 'All' && filters.gender !== '') {
     const gender = String(filters.gender).toLowerCase().trim();
     filtered = filtered.filter(x => String(x.sex || x.gender || 'Male').toLowerCase().trim() === gender);
   }
-  
+
   // 6. Completion Reason filter
   if (filters.completionReason && filters.completionReason !== 'All' && filters.completionReason !== '') {
     const reason = String(filters.completionReason).toLowerCase().trim();
     filtered = filtered.filter(x => String(x.completionReason).toLowerCase().trim() === reason);
   }
-  
+
   // 7. Joining Date range
   if (filters.joiningDateStart) {
     filtered = filtered.filter(x => x.joined && x.joined >= filters.joiningDateStart);
@@ -182,7 +182,7 @@ function applyFilters(records, filters) {
   if (filters.joiningDateEnd) {
     filtered = filtered.filter(x => x.joined && x.joined <= filters.joiningDateEnd);
   }
-  
+
   // 8. Completion Date range
   if (filters.completionDateStart) {
     filtered = filtered.filter(x => x.completionDate && x.completionDate >= filters.completionDateStart);
@@ -190,7 +190,7 @@ function applyFilters(records, filters) {
   if (filters.completionDateEnd) {
     filtered = filtered.filter(x => x.completionDate && x.completionDate <= filters.completionDateEnd);
   }
-  
+
   return filtered;
 }
 
@@ -198,19 +198,8 @@ function applyFilters(records, filters) {
 // Headers are extracted from the already-fetched cached data objects.
 // Object.keys() preserves insertion order (matches spreadsheet column order).
 async function fetchSheetHeaders() {
-  // These calls use server cache if warm — no new Sheets API calls needed
-  const activeRaw = await sheetsService.getActiveApprentices();
-  const completedRaw = await sheetsService.getCompletedApprentices();
-
-  // Extract column order from object keys (insertion order = spreadsheet column order)
-  const activeHeaders = activeRaw.length > 0
-    ? Object.keys(activeRaw[0]).filter(k => k !== '__rowNum')
-    : [];
-
-  const completedHeaders = completedRaw.length > 0
-    ? Object.keys(completedRaw[0]).filter(k => k !== '__rowNum')
-    : [];
-
+  const activeHeaders = await sheetsService.getActiveHeaders();
+  const completedHeaders = await sheetsService.getCompletedHeaders();
   return { activeHeaders, completedHeaders };
 }
 
@@ -222,7 +211,7 @@ router.post('/preview', authMiddleware, async (req, res) => {
   try {
     const activeRaw = await sheetsService.getActiveApprentices();
     const completedRaw = await sheetsService.getCompletedApprentices();
-    
+
     let active = activeRaw.map(r => mapSheetToInternal(r, false));
     let completed = completedRaw.map(r => mapSheetToInternal(r, true));
     let combined = [...active, ...completed];
@@ -285,7 +274,7 @@ router.post('/preview', authMiddleware, async (req, res) => {
 
 // 2. POST compile and download report (True Master Export Mode)
 router.post('/export', authMiddleware, async (req, res) => {
-  const { reportType, format, filters, simulateMismatch = false } = req.body;
+  const { reportType, format, filters, simulateMismatch = false, selectedColumns } = req.body;
   const user = req.user;
 
   if (!reportType || !format) {
@@ -390,31 +379,40 @@ router.post('/export', authMiddleware, async (req, res) => {
     if (!isSummaryReport) {
       const allHeadersSet = new Set([...activeHeaders, ...completedHeaders]);
       allHeadersSet.delete("__rowNum");
-      
+
       const dbColumnsCount = allHeadersSet.size;
       let orderedHeaders = getOrderedHeaders(allHeadersSet);
-      
-      // Data Completeness Count Validation
-      let exportedColumnCount = orderedHeaders.length;
-      if (simulateMismatch === 'columns' || simulateMismatch === 'cols' || simulateMismatch === true) {
-        // Intentionally simulate a mismatch for verification testing
-        orderedHeaders = orderedHeaders.slice(0, orderedHeaders.length - 1);
-        exportedColumnCount = orderedHeaders.length;
-      }
 
-      if (exportedColumnCount !== dbColumnsCount) {
-        console.error(`[REPORT ENGINE ERROR] Data completeness mismatch: Exported=${exportedColumnCount}, Database=${dbColumnsCount}`);
-        // Log validation failure to sheet
-        await executeWithRetry(() => sheetsService.getSheetsClient().spreadsheets.values.append({
-          spreadsheetId: process.env.SPREADSHEET_ID,
-          range: 'Profile_Audit_Logs!A1',
-          valueInputOption: 'RAW',
-          insertDataOption: 'INSERT_ROWS',
-          requestBody: {
-            values: [[new Date().toISOString(), "REPORT", reportTitle, `${user.location} HR Lead (${user.name})`, "Export Failed", `Column Mismatch: DB=${dbColumnsCount}, Exported=${exportedColumnCount}`]]
-          }
-        }));
-        return res.status(500).json({ success: false, error: "Export validation failed. Missing columns detected." });
+      // --- Custom Column Selection ---
+      // When the user has configured a specific column subset, apply it.
+      // The column-count integrity check is intentionally bypassed when the user
+      // has deliberately chosen a subset — this is expected behaviour, not an error.
+      const hasCustomColumns = Array.isArray(selectedColumns) && selectedColumns.length > 0;
+      if (hasCustomColumns) {
+        // Only retain columns that actually exist in the full ordered header set
+        const validSet = new Set(orderedHeaders);
+        orderedHeaders = selectedColumns.filter(col => validSet.has(col));
+      } else {
+        // Full export — run column-count integrity validation
+        let exportedColumnCount = orderedHeaders.length;
+        if (simulateMismatch === 'columns' || simulateMismatch === 'cols' || simulateMismatch === true) {
+          orderedHeaders = orderedHeaders.slice(0, orderedHeaders.length - 1);
+          exportedColumnCount = orderedHeaders.length;
+        }
+
+        if (exportedColumnCount !== dbColumnsCount) {
+          console.error(`[REPORT ENGINE ERROR] Data completeness mismatch: Exported=${exportedColumnCount}, Database=${dbColumnsCount}`);
+          await executeWithRetry(() => sheetsService.getSheetsClient().spreadsheets.values.append({
+            spreadsheetId: process.env.SPREADSHEET_ID,
+            range: 'Profile_Audit_Logs!A1',
+            valueInputOption: 'RAW',
+            insertDataOption: 'INSERT_ROWS',
+            requestBody: {
+              values: [[new Date().toISOString(), "REPORT", reportTitle, `${user.location} HR Lead (${user.name})`, "Export Failed", `Column Mismatch: DB=${dbColumnsCount}, Exported=${exportedColumnCount}`]]
+            }
+          }));
+          return res.status(500).json({ success: false, error: "Export validation failed. Missing columns detected." });
+        }
       }
 
       exportHeaders = orderedHeaders;
@@ -536,6 +534,17 @@ router.post('/export', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error('Report Export Error:', err);
     return res.status(500).json({ success: false, error: 'Failed to compile report: ' + err.message });
+  }
+});
+
+// 3. GET available sheet headers for column selection UI
+router.get('/headers', authMiddleware, async (req, res) => {
+  try {
+    const { activeHeaders, completedHeaders } = await fetchSheetHeaders();
+    return res.json({ success: true, activeHeaders, completedHeaders });
+  } catch (err) {
+    console.error('Headers Fetch Error:', err);
+    return res.status(500).json({ success: false, error: 'Failed to fetch headers: ' + err.message });
   }
 });
 

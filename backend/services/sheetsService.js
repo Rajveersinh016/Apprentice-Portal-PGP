@@ -189,7 +189,15 @@ const ALIASES = {
   
   'status': 'Record Status',
   'employeestatus': 'Record Status',
-  'recordstatus': 'Record Status'
+  'recordstatus': 'Record Status',
+
+  'completiondate': 'Completion Date',
+  'completeddate': 'Completion Date',
+  'completedby': 'Completed By',
+  'completionreason': 'Completion Reason',
+  'reasonforcompletion': 'Completion Reason',
+  'othercompletionreason': 'Other Completion Reason',
+  'completionremarks': 'Completion Remarks'
 };
 
 function getStandardHeaderName(header, existingHeaders = []) {
@@ -548,6 +556,22 @@ async function getCompletedApprentices() {
   }
 }
 
+async function getActiveHeaders() {
+  if (dataCache.active.headers !== null) {
+    return dataCache.active.headers;
+  }
+  await getActiveApprentices();
+  return dataCache.active.headers || [];
+}
+
+async function getCompletedHeaders() {
+  if (dataCache.completed.headers !== null) {
+    return dataCache.completed.headers;
+  }
+  await getCompletedApprentices();
+  return dataCache.completed.headers || [];
+}
+
 async function updateApprentice(code, fields, updatedBy) {
   const release = await dbMutex.acquire();
   try {
@@ -723,7 +747,7 @@ async function completeApprentice(code, completedBy, reason, otherReason, remark
 // ============================================================
 // PERFORMANCE OPTIMIZATION: BATCH OVERWRITE MERGE SYSTEM
 // ============================================================
-async function upsertActiveApprentices(incomingRecords, updatedBy, fileName) {
+async function upsertActiveApprentices(incomingRecords, updatedBy, fileName, dryRun = false) {
   const release = await dbMutex.acquire();
   const startTime = Date.now();
   try {
@@ -740,7 +764,7 @@ async function upsertActiveApprentices(incomingRecords, updatedBy, fileName) {
 
     if (completedHeaders.length === 0) {
       completedHeaders = activeHeaders.filter(h => h !== "Record Status" && h !== "Updated By" && h !== "Updated Date");
-      completedHeaders.push("Completion Date", "Completed By");
+      completedHeaders.push("Completion Date", "Completed By", "Completion Reason", "Other Completion Reason", "Completion Remarks");
     }
 
     // 2. Identify new columns and perform schema expansion
@@ -758,14 +782,16 @@ async function upsertActiveApprentices(incomingRecords, updatedBy, fileName) {
     if (newKeys.length > 0) {
       // console.log(`sheetsService: Dynamically expanding schema with: ${newKeys.join(', ')}`);
       activeHeaders = [...activeHeaders, ...newKeys];
-      await executeWithRetry(() => client.spreadsheets.values.update({
-        spreadsheetId,
-        range: `Active_Apprentices!A1:${getColumnLetter(activeHeaders.length)}1`,
-        valueInputOption: 'RAW',
-        requestBody: {
-          values: [activeHeaders]
-        }
-      }));
+      if (!dryRun) {
+        await executeWithRetry(() => client.spreadsheets.values.update({
+          spreadsheetId,
+          range: `Active_Apprentices!A1:${getColumnLetter(activeHeaders.length)}1`,
+          valueInputOption: 'RAW',
+          requestBody: {
+            values: [activeHeaders]
+          }
+        }));
+      }
 
       // Expand Completed_Apprentices headers
       let insertIdx = completedHeaders.indexOf("Completion Date");
@@ -778,14 +804,16 @@ async function upsertActiveApprentices(incomingRecords, updatedBy, fileName) {
         ...completedHeaders.slice(insertIdx)
       ];
 
-      await executeWithRetry(() => client.spreadsheets.values.update({
-        spreadsheetId,
-        range: `Completed_Apprentices!A1:${getColumnLetter(completedHeaders.length)}1`,
-        valueInputOption: 'RAW',
-        requestBody: {
-          values: [completedHeaders]
-        }
-      }));
+      if (!dryRun) {
+        await executeWithRetry(() => client.spreadsheets.values.update({
+          spreadsheetId,
+          range: `Completed_Apprentices!A1:${getColumnLetter(completedHeaders.length)}1`,
+          valueInputOption: 'RAW',
+          requestBody: {
+            values: [completedHeaders]
+          }
+        }));
+      }
     }
 
     // 3. Setup index maps for reconciliation (normalized lowercase keys for robust matching)
@@ -916,9 +944,37 @@ async function upsertActiveApprentices(incomingRecords, updatedBy, fileName) {
         existingCompleted = completedEnrollmentMap.get(normEnrollment);
       }
 
-      const isCompleted = !!existingCompleted;
-      const targetMap = isCompleted ? completedMap : activeMap;
+      const originallyActive = !!existingActive;
+      const originallyCompleted = !!existingCompleted;
+
+      // Determine target status: check if Excel sheet explicitly requests Completed/Active
+      const incomingStatusVal = resolved["Record Status"] ? String(resolved["Record Status"]).trim().toLowerCase() : "";
+      let shouldBeCompleted = originallyCompleted;
+      if (!originallyCompleted) {
+        if (incomingStatusVal === "completed" || incomingStatusVal === "complete" || incomingStatusVal === "inactive") {
+          shouldBeCompleted = true;
+        } else if (incomingStatusVal === "active") {
+          shouldBeCompleted = false;
+        }
+      }
+
+      const targetMap = shouldBeCompleted ? completedMap : activeMap;
       const existing = existingActive || existingCompleted;
+
+      // If record is transitioning to Completed, delete it from the Active map
+      if (originallyActive && shouldBeCompleted) {
+        const activeKey = normalizeCodeVal(existingActive["Employee Code"]);
+        if (activeKey) {
+          activeMap.delete(activeKey);
+        }
+      }
+      // If record is transitioning to Active, delete it from the Completed map
+      if (originallyCompleted && !shouldBeCompleted) {
+        const completedKey = normalizeCodeVal(existingCompleted["Employee Code"]);
+        if (completedKey) {
+          completedMap.delete(completedKey);
+        }
+      }
 
       const merged = existing ? { ...existing } : {};
 
@@ -938,7 +994,7 @@ async function upsertActiveApprentices(incomingRecords, updatedBy, fileName) {
             merged[std] = cleanInc !== "" ? incVal : (std === "Remarks" ? "" : "Pending"); // Populate new
           }
         } else if (std === "Record Status") {
-          merged[std] = isCompleted ? "Completed" : "Active";
+          merged[std] = shouldBeCompleted ? "Completed" : "Active";
         } else if (std === "Updated By") {
           merged[std] = updatedBy;
         } else if (std === "Updated Date") {
@@ -952,13 +1008,33 @@ async function upsertActiveApprentices(incomingRecords, updatedBy, fileName) {
         }
       });
 
+      // Populate and default completion details if completing program
+      if (shouldBeCompleted) {
+        if (!merged["Completion Date"]) {
+          merged["Completion Date"] = resolved["Completion Date"] || (existing ? existing["Completion Date"] : "") || nowStr;
+        }
+        if (!merged["Completed By"]) {
+          merged["Completed By"] = resolved["Completed By"] || (existing ? existing["Completed By"] : "") || updatedBy;
+        }
+        if (!merged["Completion Reason"]) {
+          merged["Completion Reason"] = resolved["Completion Reason"] || (existing ? existing["Completion Reason"] : "") || "Bulk Excel Import";
+        }
+        if (!merged["Other Completion Reason"]) {
+          merged["Other Completion Reason"] = resolved["Other Completion Reason"] || (existing ? existing["Other Completion Reason"] : "") || "";
+        }
+        if (!merged["Completion Remarks"]) {
+          merged["Completion Remarks"] = resolved["Completion Remarks"] || (existing ? existing["Completion Remarks"] : "") || "Completed via bulk excel import";
+        }
+      }
+
       // Default values for missing schema keys
-      activeHeaders.forEach(std => {
+      const targetHeaders = shouldBeCompleted ? completedHeaders : activeHeaders;
+      targetHeaders.forEach(std => {
         if (merged[std] === undefined) {
           if (std === "Employee Contract ID" || std === "Portal Enrollment Number" || std === "Portal Name") {
             merged[std] = "Pending";
           } else if (std === "Record Status") {
-            merged[std] = isCompleted ? "Completed" : "Active";
+            merged[std] = shouldBeCompleted ? "Completed" : "Active";
           } else {
             merged[std] = "";
           }
@@ -967,7 +1043,24 @@ async function upsertActiveApprentices(incomingRecords, updatedBy, fileName) {
 
       if (existing) {
         targetMap.set(normCode, merged);
-        updatedCount++;
+        
+        let hasChanges = false;
+        const targetHeaders = shouldBeCompleted ? completedHeaders : activeHeaders;
+        const ignoreKeys = ["Updated By", "Updated Date", "Completion Date", "Completed By", "Completion Reason", "Other Completion Reason", "Completion Remarks"];
+        
+        for (const header of targetHeaders) {
+          if (ignoreKeys.includes(header)) continue;
+          const oldVal = existing[header] !== undefined ? String(existing[header]).trim() : "";
+          const newVal = merged[header] !== undefined ? String(merged[header]).trim() : "";
+          if (oldVal !== newVal) {
+            hasChanges = true;
+            break;
+          }
+        }
+
+        if (hasChanges) {
+          updatedCount++;
+        }
       } else {
         targetMap.set(normCode, merged);
         insertedCount++;
@@ -978,39 +1071,43 @@ async function upsertActiveApprentices(incomingRecords, updatedBy, fileName) {
     const finalActiveList = Array.from(activeMap.values());
     const activeValues = objectsToValues(finalActiveList, activeHeaders);
 
-    await executeWithRetry(() => client.spreadsheets.values.update({
-      spreadsheetId,
-      range: `Active_Apprentices!A1:${getColumnLetter(activeHeaders.length)}${finalActiveList.length + 1}`,
-      valueInputOption: 'RAW',
-      requestBody: {
-        values: activeValues
-      }
-    }));
-
-    if (activeRaw.length > finalActiveList.length) {
-      await executeWithRetry(() => client.spreadsheets.values.clear({
+    if (!dryRun) {
+      await executeWithRetry(() => client.spreadsheets.values.update({
         spreadsheetId,
-        range: `Active_Apprentices!A${finalActiveList.length + 2}:ZZ${activeRaw.length + 1}`
+        range: `Active_Apprentices!A1:${getColumnLetter(activeHeaders.length)}${finalActiveList.length + 1}`,
+        valueInputOption: 'RAW',
+        requestBody: {
+          values: activeValues
+        }
       }));
+
+      if (activeRaw.length > finalActiveList.length) {
+        await executeWithRetry(() => client.spreadsheets.values.clear({
+          spreadsheetId,
+          range: `Active_Apprentices!A${finalActiveList.length + 2}:ZZ${activeRaw.length + 1}`
+        }));
+      }
     }
 
     const finalCompletedList = Array.from(completedMap.values());
     const completedValues = objectsToValues(finalCompletedList, completedHeaders);
 
-    await executeWithRetry(() => client.spreadsheets.values.update({
-      spreadsheetId,
-      range: `Completed_Apprentices!A1:${getColumnLetter(completedHeaders.length)}${finalCompletedList.length + 1}`,
-      valueInputOption: 'RAW',
-      requestBody: {
-        values: completedValues
-      }
-    }));
-
-    if (completedRaw.length > finalCompletedList.length) {
-      await executeWithRetry(() => client.spreadsheets.values.clear({
+    if (!dryRun) {
+      await executeWithRetry(() => client.spreadsheets.values.update({
         spreadsheetId,
-        range: `Completed_Apprentices!A${finalCompletedList.length + 2}:ZZ${completedRaw.length + 1}`
+        range: `Completed_Apprentices!A1:${getColumnLetter(completedHeaders.length)}${finalCompletedList.length + 1}`,
+        valueInputOption: 'RAW',
+        requestBody: {
+          values: completedValues
+        }
       }));
+
+      if (completedRaw.length > finalCompletedList.length) {
+        await executeWithRetry(() => client.spreadsheets.values.clear({
+          spreadsheetId,
+          range: `Completed_Apprentices!A${finalCompletedList.length + 2}:ZZ${completedRaw.length + 1}`
+        }));
+      }
     }
 
     // 6. Write detailed record to AuditLogs sheet
@@ -1029,18 +1126,20 @@ async function upsertActiveApprentices(incomingRecords, updatedBy, fileName) {
       duration + "ms"
     ];
 
-    await executeWithRetry(() => client.spreadsheets.values.append({
-      spreadsheetId,
-      range: 'AuditLogs!A1',
-      valueInputOption: 'RAW',
-      insertDataOption: 'INSERT_ROWS',
-      requestBody: {
-        values: [logRow]
-      }
-    }));
+    if (!dryRun) {
+      await executeWithRetry(() => client.spreadsheets.values.append({
+        spreadsheetId,
+        range: 'AuditLogs!A1',
+        valueInputOption: 'RAW',
+        insertDataOption: 'INSERT_ROWS',
+        requestBody: {
+          values: [logRow]
+        }
+      }));
 
-    // Invalidate cache — bulk upload changes both sheets
-    invalidateDataCache();
+      // Invalidate cache — bulk upload changes both sheets
+      invalidateDataCache();
+    }
 
     return {
       inserted: insertedCount,
@@ -1149,10 +1248,60 @@ async function getUploadAuditLogs() {
       });
       logs.push(log);
     }
-    
+    const normalizedLogs = logs.map(log => {
+      const norm = {};
+      const isNewFormatSheet = log["Upload Time"] !== undefined;
+      
+      if (isNewFormatSheet) {
+        norm["Upload Time"] = log["Upload Time"];
+        norm["Uploaded By"] = log["Uploaded By"];
+        norm["File Name"] = log["File Name"];
+        norm["Inserted"] = log["Inserted"];
+        norm["Updated"] = log["Updated"];
+        norm["Rejected"] = log["Rejected"];
+        norm["Duplicates Removed"] = log["Duplicates Removed"];
+        norm["New Columns Created"] = log["New Columns Created"];
+        norm["Execution Duration"] = log["Execution Duration"];
+      } else {
+        const isNewCodeWrite = String(log["Rows Failed"] || "").includes("ms") || 
+                               String(log["Role"] || "").toLowerCase().endsWith(".xlsx") ||
+                               String(log["Role"] || "").toLowerCase().endsWith(".xls") ||
+                               String(log["Role"] || "").toLowerCase().endsWith(".csv") ||
+                               log["Role"] === "JSON Payload";
+                               
+        if (isNewCodeWrite) {
+          norm["Upload Time"] = log["Timestamp"];
+          norm["Uploaded By"] = log["User"];
+          norm["File Name"] = log["Role"];
+          norm["Inserted"] = log["Filename"];
+          norm["Updated"] = log["Rows Parsed"];
+          norm["Rejected"] = log["Rows Inserted"];
+          norm["Duplicates Removed"] = log["Rows Updated"];
+          norm["New Columns Created"] = log["Rows Skipped"];
+          norm["Execution Duration"] = log["Rows Failed"];
+        } else {
+          norm["Upload Time"] = log["Timestamp"];
+          norm["Uploaded By"] = log["User"] + (log["Role"] ? ` (${log["Role"]})` : "");
+          norm["File Name"] = log["Filename"];
+          norm["Inserted"] = log["Rows Inserted"];
+          norm["Updated"] = log["Rows Updated"];
+          norm["Rejected"] = log["Rows Failed"];
+          norm["Duplicates Removed"] = log["Rows Skipped"] || 0;
+          norm["New Columns Created"] = "None";
+          norm["Execution Duration"] = "N/A";
+        }
+      }
+      return norm;
+    });
+
     // Sort reverse chronological by Upload Time
-    logs.sort((a, b) => new Date(b["Upload Time"]) - new Date(a["Upload Time"]));
-    return logs;
+    normalizedLogs.sort((a, b) => {
+      const dateA = new Date(String(a["Upload Time"]).replace(' ', 'T'));
+      const dateB = new Date(String(b["Upload Time"]).replace(' ', 'T'));
+      return dateB - dateA;
+    });
+    
+    return normalizedLogs;
   } catch (err) {
     console.error("sheetsService: Error reading upload audit logs:", err.message);
     return [];
@@ -1167,6 +1316,8 @@ module.exports = {
   saveUsers,
   getActiveApprentices,
   getCompletedApprentices,
+  getActiveHeaders,
+  getCompletedHeaders,
   updateApprentice,
   completeApprentice,
   upsertActiveApprentices,

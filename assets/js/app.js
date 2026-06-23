@@ -71,7 +71,7 @@ function mapInternalToSheet(app) {
 // ============================================================
 function debounce(fn, delay) {
   let timer;
-  return function(...args) {
+  return function (...args) {
     clearTimeout(timer);
     timer = setTimeout(() => fn.apply(this, args), delay);
   };
@@ -91,7 +91,7 @@ const AppDB = {
 
   invalidateCache() {
     this._cache.data = null;
-    this._cache.ts   = 0;
+    this._cache.ts = 0;
   },
 
   // ── Helper: read stored JWT token
@@ -141,7 +141,7 @@ const AppDB = {
       if (resData.success) {
         // Store in in-memory cache (NOT localStorage — multi-user safe)
         this._cache.data = resData.apprentices || [];
-        this._cache.ts   = Date.now();
+        this._cache.ts = Date.now();
         localStorage.setItem('pref_sheets_sync', 'true');
         this.isLive = true;
         // console.log(`AppDB: Cached ${this._cache.data.length} live records (TTL 30s).`);
@@ -376,13 +376,13 @@ const AppShell = {
     menuItems.forEach(el => {
       const href = el.getAttribute('href');
       if (!href) return;
-      
+
       const itemPathBase = href.split('?')[0];
       const itemType = new URLSearchParams(href.split('?')[1] || '').get('type');
       const pageType = new URLSearchParams(window.location.search).get('type') || (filename === 'apprentices.html' ? 'active' : null);
-      
+
       const isExactMatch = filename === itemPathBase && (itemType === null || itemType === pageType);
-      
+
       if (isExactMatch && !activeFound) {
         el.classList.add('active');
         activeFound = true;
@@ -897,23 +897,23 @@ const DashboardPage = {
 
     // Single-pass KPI calculation — replaces 8 separate filter() calls
     let active = 0, completed = 0, contractPending = 0, portalPending = 0,
-        portalNamePending = 0, selectedPermanent = 0, emailPending = 0, phonePending = 0;
+      portalNamePending = 0, selectedPermanent = 0, emailPending = 0, phonePending = 0;
 
     list.forEach(x => {
-      const isActive    = x.status === 'Active';
+      const isActive = x.status === 'Active';
       const isCompleted = x.status === 'Completed';
       if (isActive) active++;
       if (isCompleted) completed++;
-      if (isActive && (x.contractId === 'Pending' || x.contractId === ''))              contractPending++;
+      if (isActive && (x.contractId === 'Pending' || x.contractId === '')) contractPending++;
       if (isActive && (x.portalEnrollmentNumber === 'Pending' || x.portalEnrollmentNumber === '')) portalPending++;
-      if (isActive && (x.portalName === 'Pending' || x.portalName === ''))             portalNamePending++;
-      if (isCompleted && x.completionReason === 'Selected as Permanent Employee')       selectedPermanent++;
-      if (isActive && (!x.email || x.email === 'Pending' || x.email === ''))           emailPending++;
-      if (isActive && (!x.phone || x.phone === 'Pending' || x.phone === ''))           phonePending++;
+      if (isActive && (x.portalName === 'Pending' || x.portalName === '')) portalNamePending++;
+      if (isCompleted && x.completionReason === 'Selected as Permanent Employee') selectedPermanent++;
+      if (isActive && (!x.email || x.email === 'Pending' || x.email === '')) emailPending++;
+      if (isActive && (!x.phone || x.phone === 'Pending' || x.phone === '')) phonePending++;
     });
 
     const total = active + completed;
-    const completionRate    = total > 0 ? ((completed / total) * 100).toFixed(1) : '0.0';
+    const completionRate = total > 0 ? ((completed / total) * 100).toFixed(1) : '0.0';
     const permConversionRate = completed > 0 ? ((selectedPermanent / completed) * 100).toFixed(1) : '0.0';
 
     // Update welcome hero stats with easing countUp animation
@@ -1032,7 +1032,7 @@ const DashboardPage = {
     animateCountUp(document.getElementById('card-val-contract-pending'), contractPending);
     animateCountUp(document.getElementById('card-val-portal-pending'), portalPending);
     animateCountUp(document.getElementById('card-val-portal-name-pending'), portalNamePending);
-    
+
     const compRateEl = document.getElementById('card-val-completion-rate');
     const permConvEl = document.getElementById('card-val-perm-conversion');
     if (compRateEl) compRateEl.textContent = completionRate + '%';
@@ -1181,7 +1181,7 @@ const DashboardPage = {
     }
 
     // Chart 4: Gender Distribution
-    const maleCount   = list.filter(x => String(x.sex).toLowerCase().trim() === 'male').length;
+    const maleCount = list.filter(x => String(x.sex).toLowerCase().trim() === 'male').length;
     const femaleCount = list.filter(x => String(x.sex).toLowerCase().trim() === 'female').length;
     if (!Charts.updateChart('chart-gender-dist', ['Male', 'Female'], [maleCount, femaleCount])) {
       Charts.createDonutChart('chart-gender-dist', ['Male', 'Female'], [maleCount, femaleCount]);
@@ -1290,7 +1290,7 @@ const ApprenticesPage = {
         buildTableHeader();
       }
       this.loadData();
-      
+
       const searchInput = document.getElementById('table-search');
       const deptFilter = document.getElementById('filter-dept');
       const statusFilter = document.getElementById('filter-status');
@@ -1341,7 +1341,7 @@ const ApprenticesPage = {
     sessionStorage.setItem(`pgp_${this.pageType}_page`, 1);
 
     history.replaceState(null, '', `apprentices.html?type=${this.pageType}`);
-    
+
     const subHeader = document.getElementById('page-subtitle-header');
     if (subHeader) {
       if (this.pageType === 'completed') {
@@ -1768,7 +1768,7 @@ const ApprenticeDetailPage = {
       this.currentApprentice = app;
       this.renderProfile();
       await this.loadAuditHistory();
-    } catch(e) {
+    } catch (e) {
       Toast.error('Record Not Found', 'Could not locate the apprentice profile. ' + e.message);
       setTimeout(() => window.location.href = 'apprentices.html?type=active', 1500);
     }
@@ -1917,7 +1917,7 @@ const ApprenticeDetailPage = {
 
     this.dynamicFields.forEach(f => {
       const displayVal = f.value !== undefined && f.value !== null && String(f.value).trim() !== '' ? f.value : 'Pending';
-      
+
       container.innerHTML += `
         <div class="form-group-profile">
           <label class="form-label">${f.key}</label>
@@ -1978,10 +1978,10 @@ const ApprenticeDetailPage = {
     try {
       await AppDB.updateApprentice(app.code, payload);
       Toast.success('Profile Saved', 'Profile details updated successfully.', 2000);
-      
+
       // Reset edit mode
       this.toggleEditMode(false);
-      
+
       // Reload profile
       await this.loadRecord(app.code);
     } catch (err) {
@@ -2006,7 +2006,7 @@ const ApprenticeDetailPage = {
       });
       if (!response.ok) throw new Error('HTTP ' + response.status);
       const resData = await response.json();
-      
+
       if (resData.success && resData.logs) {
         this.renderTimeline(resData.logs);
       } else {
@@ -2061,7 +2061,7 @@ const ApprenticeDetailPage = {
       const dateStr = log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A';
       const isCompletion = log.action === 'Program Completion' || log.action === 'Apprenticeship Completed';
       const dotClass = isCompletion ? 'completion' : '';
-      
+
       timelineHtml += `
         <div class="audit-timeline-item animate-fadeIn">
           <div class="audit-timeline-dot ${dotClass}"></div>
@@ -2107,6 +2107,7 @@ const ApprenticeDetailPage = {
 
 const ExcelUploadPage = {
   selectedFile: null,
+  parsedRecords: [],
 
   init() {
     this.bindEvents();
@@ -2185,7 +2186,7 @@ const ExcelUploadPage = {
 
       progress.style.width = '60%';
 
-      const response = await fetch(`${backendUrl}/api/upload`, {
+      const response = await fetch(`${backendUrl}/api/upload?dryRun=true`, {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token }, // no Content-Type — FormData sets boundary
         body: formData
@@ -2198,15 +2199,12 @@ const ExcelUploadPage = {
         throw new Error(resData.error || 'Upload failed on server');
       }
 
+      this.parsedRecords = resData.records || [];
+
       stateUploading.style.display = 'none';
       stateResults.style.display = 'block';
-      this.renderLiveResults(resData);
-      Toast.success('Import Processed', `${resData.totalProcessed} rows processed by backend.`, 2500);
-
-      // Invalidate cache and reload upload history
-      AppDB.invalidateCache();
-      await AppDB.init();
-      await this.loadUploadHistory();
+      this.renderLiveResults(resData, false);
+      Toast.success('Dry Run Processed', `${resData.totalProcessed} rows validated by backend.`, 2500);
 
     } catch (err) {
       stateUploading.style.display = 'none';
@@ -2217,21 +2215,24 @@ const ExcelUploadPage = {
     }
   },
 
-  renderLiveResults(data) {
+  renderLiveResults(data, isConfirmed = false) {
     const inserted = data.inserted || 0;
-    const updated  = data.updated  || 0;
-    const total    = data.totalProcessed || (inserted + updated);
+    const updated = data.updated || 0;
+    const total = data.totalProcessed || (inserted + updated);
     const rejected = data.rejected ? data.rejected.length : 0;
     const duplicates = data.duplicatesRemoved || 0;
+    const unchanged = Math.max(0, total - inserted - updated - duplicates - rejected);
 
-    const elTotal  = document.getElementById('res-total');
-    const elSuc    = document.getElementById('res-success');
-    const elErr    = document.getElementById('res-errors');
-    const elDup    = document.getElementById('res-duplicates');
+    const elTotal = document.getElementById('res-total');
+    const elSuc = document.getElementById('res-success');
+    const elErr = document.getElementById('res-errors');
+    const elDup = document.getElementById('res-duplicates');
+    const elUnc = document.getElementById('res-unchanged');
     if (elTotal) elTotal.innerText = total;
-    if (elSuc)   elSuc.innerText   = inserted + updated;
-    if (elErr)   elErr.innerText   = rejected;
-    if (elDup)   elDup.innerText   = duplicates;
+    if (elSuc) elSuc.innerText = inserted + updated;
+    if (elErr) elErr.innerText = rejected;
+    if (elDup) elDup.innerText = duplicates;
+    if (elUnc) elUnc.innerText = unchanged;
 
     const listTbody = document.getElementById('validation-results-tbody');
     if (listTbody) {
@@ -2277,6 +2278,18 @@ const ExcelUploadPage = {
         `;
       }
 
+      if (unchanged > 0) {
+        html += `
+          <tr class="table-info" style="background: rgba(59,130,246,0.02);">
+            <td>All Locations / Row: Multiple</td>
+            <td>Multiple</td>
+            <td><strong>${unchanged} apprentices</strong></td>
+            <td><span class="badge-custom" style="background: rgba(59, 130, 246, 0.1); color: rgb(37, 99, 235);">Unchanged</span></td>
+            <td>No demographic or status changes detected. Record is up to date.</td>
+          </tr>
+        `;
+      }
+
       if (html === '') {
         html = `<tr><td colspan="5" class="text-center text-muted py-4">No records were processed.</td></tr>`;
       }
@@ -2284,20 +2297,97 @@ const ExcelUploadPage = {
       listTbody.innerHTML = html;
     }
 
-    // Confirm button: refresh data and navigate
     const confirmBtn = document.getElementById('btn-confirm-import');
-    if (confirmBtn) {
-      confirmBtn.innerText = 'View Active Apprentices';
-      confirmBtn.onclick = async () => {
-        AppDB.invalidateCache();
-        await AppDB.init();
-        window.location.href = 'apprentices.html';
-      };
-    }
-
     const cancelBtn = document.getElementById('btn-cancel-import');
-    if (cancelBtn) {
-      cancelBtn.onclick = () => window.location.reload();
+
+    if (isConfirmed) {
+      if (confirmBtn) {
+        confirmBtn.innerHTML = 'View Active Apprentices';
+        confirmBtn.onclick = () => {
+          window.location.href = 'apprentices.html';
+        };
+      }
+      if (cancelBtn) {
+        cancelBtn.style.display = 'none';
+      }
+    } else {
+      if (confirmBtn) {
+        confirmBtn.innerHTML = '<i class="fas fa-check-double"></i> Confirm & Import Records';
+        confirmBtn.onclick = () => this.commitImport();
+      }
+      if (cancelBtn) {
+        cancelBtn.style.display = 'inline-flex';
+        cancelBtn.onclick = () => window.location.reload();
+      }
+    }
+  },
+
+  async commitImport() {
+    const confirmBtn = document.getElementById('btn-confirm-import');
+    const cancelBtn = document.getElementById('btn-cancel-import');
+
+    if (confirmBtn) confirmBtn.disabled = true;
+    if (cancelBtn) cancelBtn.disabled = true;
+
+    if (confirmBtn) confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Importing...';
+
+    const backendUrl = AppDB.getBackendUrl();
+    const token = AppDB.getToken();
+
+    try {
+      const response = await fetch(`${backendUrl}/api/upload?dryRun=false`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({
+          records: this.parsedRecords,
+          fileName: this.selectedFile.name
+        })
+      });
+
+      const resData = await response.json();
+
+      if (!response.ok || !resData.success) {
+        throw new Error(resData.error || 'Import failed on server');
+      }
+
+      if (confirmBtn) confirmBtn.disabled = false;
+      if (cancelBtn) cancelBtn.disabled = false;
+
+      const total = resData.totalProcessed || 0;
+      const inserted = resData.inserted || 0;
+      const updated = resData.updated || 0;
+      const duplicates = resData.duplicatesRemoved || 0;
+      const rejected = resData.rejected ? resData.rejected.length : 0;
+      const unchanged = Math.max(0, total - inserted - updated - duplicates - rejected);
+
+      ModalManager.confirm({
+        title: 'Import Completed',
+        message: `Import completed successfully!\n\n• Records Inserted: ${inserted}\n• Records Updated: ${updated}\n• Unchanged Records: ${unchanged}\n• Records Rejected: ${rejected}\n• Duplicates Removed: ${duplicates}`,
+        iconType: 'success',
+        confirmText: 'View Active Apprentices',
+        cancelText: 'Close',
+        onConfirm: () => {
+          window.location.href = 'apprentices.html';
+        },
+        onCancel: async () => {
+          this.renderLiveResults(resData, true);
+          AppDB.invalidateCache();
+          await AppDB.init();
+          await this.loadUploadHistory();
+        }
+      });
+
+    } catch (err) {
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="fas fa-check-double"></i> Confirm & Import Records';
+      }
+      if (cancelBtn) cancelBtn.disabled = false;
+      Toast.error('Import Failed', err.message || 'Could not commit import to backend.');
+      console.error('ExcelUploadPage commit error:', err);
     }
   },
 
@@ -2327,7 +2417,7 @@ const ExcelUploadPage = {
           const updated = parseInt(log["Updated"]) || 0;
           const rejected = parseInt(log["Rejected"]) || 0;
           const totalSuccess = inserted + updated;
-          
+
           html += `
             <tr class="animate-fadeIn">
               <td>${log["Upload Time"] || 'N/A'}</td>
@@ -2352,27 +2442,223 @@ const ExcelUploadPage = {
 };
 
 const AnalyticsPage = {
+  activeTab: 'summary',
+
   init() {
+    this.populateDepartmentsDropdown();
+    this.setupFilters();
+    this.setupTabs();
     this.renderAnalytics();
 
+    // Listen to global changes
     analyticsBranchChangedListener = () => {
+      const filterLoc = document.getElementById('analytics-filter-location');
+      if (filterLoc) {
+        filterLoc.value = AppDB.getBranch();
+      }
       this.renderAnalytics();
     };
+
+    analyticsApprenticesUpdatedListener = () => {
+      this.populateDepartmentsDropdown();
+      this.renderAnalytics();
+    };
+
     window.addEventListener('branchchanged', analyticsBranchChangedListener);
+    window.addEventListener('apprenticesupdated', analyticsApprenticesUpdatedListener);
+  },
+
+  populateDepartmentsDropdown() {
+    const deptSelect = document.getElementById('analytics-filter-dept');
+    if (!deptSelect) return;
+
+    const allData = AppDB.getApprentices();
+    const depts = new Set();
+    allData.forEach(x => {
+      const d = (x.dept || x.department || '').trim();
+      if (d) depts.add(d);
+    });
+
+    const sortedDepts = Array.from(depts).sort();
+    const currentVal = deptSelect.value;
+
+    let html = '<option value="All">All Departments</option>';
+    sortedDepts.forEach(d => {
+      html += `<option value="${d}">${d}</option>`;
+    });
+
+    deptSelect.innerHTML = html;
+
+    if (sortedDepts.includes(currentVal)) {
+      deptSelect.value = currentVal;
+    }
+  },
+
+  setupFilters() {
+    const fields = [
+      'analytics-filter-location',
+      'analytics-filter-dept',
+      'analytics-filter-status',
+      'analytics-filter-gender',
+      'analytics-filter-age',
+      'analytics-filter-date-start',
+      'analytics-filter-date-end'
+    ];
+
+    const role = AppDB.getRole();
+    const branch = AppDB.getBranch();
+
+    const locSelect = document.getElementById('analytics-filter-location');
+    if (locSelect) {
+      if (role === 'Branch HR') {
+        locSelect.value = branch;
+        locSelect.disabled = true;
+      } else {
+        locSelect.value = branch;
+      }
+    }
+
+    fields.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('change', () => this.renderAnalytics());
+      }
+    });
+
+    const resetBtn = document.getElementById('btn-reset-analytics-filters');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => {
+        if (locSelect && role !== 'Branch HR') locSelect.value = 'All Locations';
+        const deptSelect = document.getElementById('analytics-filter-dept');
+        if (deptSelect) deptSelect.value = 'All';
+        const statusSelect = document.getElementById('analytics-filter-status');
+        if (statusSelect) statusSelect.value = 'All';
+        const genderSelect = document.getElementById('analytics-filter-gender');
+        if (genderSelect) genderSelect.value = 'All';
+        const ageSelect = document.getElementById('analytics-filter-age');
+        if (ageSelect) ageSelect.value = 'All';
+        const startEl = document.getElementById('analytics-filter-date-start');
+        if (startEl) startEl.value = '';
+        const endEl = document.getElementById('analytics-filter-date-end');
+        if (endEl) endEl.value = '';
+
+        this.renderAnalytics();
+      });
+    }
+  },
+
+  setupTabs() {
+    const tabBtns = document.querySelectorAll('.analytics-tab-btn');
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const type = btn.getAttribute('data-analytics-type');
+        this.activeTab = type;
+
+        const sections = document.querySelectorAll('.analytics-section');
+        sections.forEach(sec => {
+          sec.classList.remove('active');
+        });
+
+        const activeSec = document.getElementById(`section-${type}`);
+        if (activeSec) activeSec.classList.add('active');
+
+        this.renderAnalytics();
+      });
+    });
+  },
+
+  getFilteredAnalyticsData() {
+    let list = AppDB.getApprentices();
+
+    // 1. Location filter
+    const locVal = document.getElementById('analytics-filter-location')?.value || 'All Locations';
+    if (locVal !== 'All Locations') {
+      list = list.filter(x => String(x.location || '').toLowerCase().trim() === locVal.toLowerCase().trim());
+    }
+
+    // 2. Department filter
+    const deptVal = document.getElementById('analytics-filter-dept')?.value || 'All';
+    if (deptVal !== 'All') {
+      list = list.filter(x => String(x.dept || x.department || '').toLowerCase().trim() === deptVal.toLowerCase().trim());
+    }
+
+    // 3. Status filter
+    const statusVal = document.getElementById('analytics-filter-status')?.value || 'All';
+    if (statusVal !== 'All') {
+      list = list.filter(x => String(x.status || '').toLowerCase().trim() === statusVal.toLowerCase().trim());
+    }
+
+    // 4. Gender filter
+    const genderVal = document.getElementById('analytics-filter-gender')?.value || 'All';
+    if (genderVal !== 'All') {
+      list = list.filter(x => String(x.sex || '').toLowerCase().trim() === genderVal.toLowerCase().trim());
+    }
+
+    // 5. Age filter
+    const ageVal = document.getElementById('analytics-filter-age')?.value || 'All';
+    if (ageVal !== 'All') {
+      list = list.filter(x => {
+        const ageNum = parseInt(x.age);
+        if (isNaN(ageNum)) return false;
+
+        if (ageVal === 'Under 20') return ageNum < 20;
+        if (ageVal === '20-22') return ageNum >= 20 && ageNum <= 22;
+        if (ageVal === '23-25') return ageNum >= 23 && ageNum <= 25;
+        if (ageVal === '26+') return ageNum >= 26;
+        return true;
+      });
+    }
+
+    // 6. Date Range Filters
+    const startVal = document.getElementById('analytics-filter-date-start')?.value;
+    if (startVal) {
+      const startDate = new Date(startVal);
+      list = list.filter(x => {
+        if (!x.joined) return false;
+        const joinedDate = new Date(x.joined);
+        return joinedDate >= startDate;
+      });
+    }
+
+    const endVal = document.getElementById('analytics-filter-date-end')?.value;
+    if (endVal) {
+      const endDate = new Date(endVal);
+      list = list.filter(x => {
+        if (!x.joined) return false;
+        const joinedDate = new Date(x.joined);
+        return joinedDate <= endDate;
+      });
+    }
+
+    return list;
   },
 
   renderAnalytics() {
-    const list = DashboardPage.getFilteredData().filter(x => x.status === 'Active' || x.status === 'Completed');
-    const allData = AppDB.getApprentices().filter(x => x.status === 'Active' || x.status === 'Completed');
+    const list = this.getFilteredAnalyticsData();
 
-    // 1. Location distribution comparison — always use full dataset (all branches), case-insensitive
+    if (this.activeTab === 'summary') {
+      this.renderSummaryCharts(list);
+    } else if (this.activeTab === 'demographics') {
+      this.renderDemographicsCharts(list);
+    } else if (this.activeTab === 'compliance') {
+      this.renderComplianceCharts(list);
+    } else if (this.activeTab === 'trends') {
+      this.renderTrendsCharts(list);
+    }
+  },
+
+  renderSummaryCharts(list) {
+    // A. Location Comparison
     const locations = ['Kosamba', 'Jambusar', 'Halol', 'Vadodara'];
-    const locCounts = locations.map(loc => allData.filter(x => String(x.location || '').toLowerCase().trim() === loc.toLowerCase().trim()).length);
-    if (!Charts.updateChart('analytics-chart-location', locations, locCounts)) {
-      Charts.createBarChart('analytics-chart-location', locations, locCounts, 'Total Apprentices');
+    const locCounts = locations.map(loc => list.filter(x => String(x.location || '').toLowerCase().trim() === loc.toLowerCase().trim()).length);
+    if (!Charts.updateChart('summary-chart-location', locations, locCounts)) {
+      Charts.createBarChart('summary-chart-location', locations, locCounts, 'Total Apprentices');
     }
 
-    // 2. Department distribution — computed dynamically from real data
+    // B. Department Distribution
     const deptMap = {};
     list.forEach(x => {
       const dept = (x.dept || x.department || '').trim();
@@ -2381,58 +2667,164 @@ const AnalyticsPage = {
     const depts = Object.keys(deptMap);
     const deptCounts = depts.map(d => deptMap[d]);
     if (depts.length === 0) {
-      if (!Charts.updateChart('analytics-chart-department', ['No Data'], [1])) {
-        Charts.createPieChart('analytics-chart-department', ['No Data'], [1]);
+      if (!Charts.updateChart('summary-chart-department', ['No Data'], [1])) {
+        Charts.createPieChart('summary-chart-department', ['No Data'], [1]);
       }
     } else {
-      if (!Charts.updateChart('analytics-chart-department', depts, deptCounts)) {
-        Charts.createPieChart('analytics-chart-department', depts, deptCounts);
+      if (!Charts.updateChart('summary-chart-department', depts, deptCounts)) {
+        Charts.createPieChart('summary-chart-department', depts, deptCounts);
       }
     }
 
-    // 3. Portal Enrollment
+    // C. Portal Enrollment
     const enrolled = list.filter(x => x.portalEnrollmentNumber && x.portalEnrollmentNumber !== 'Pending' && x.portalEnrollmentNumber !== '').length;
     const portalPending = list.filter(x => !x.portalEnrollmentNumber || x.portalEnrollmentNumber === 'Pending' || x.portalEnrollmentNumber === '').length;
-    if (!Charts.updateChart('analytics-chart-portal', ['Enrolled', 'Pending'], [enrolled, portalPending])) {
-      Charts.createDonutChart('analytics-chart-portal', ['Enrolled', 'Pending'], [enrolled, portalPending]);
+    if (!Charts.updateChart('summary-chart-portal', ['Enrolled', 'Pending'], [enrolled, portalPending])) {
+      Charts.createDonutChart('summary-chart-portal', ['Enrolled', 'Pending'], [enrolled, portalPending]);
     }
 
-    // 4. Contract ID Status
+    // D. Contract ID Status
     const completedContract = list.filter(x => x.contractId && x.contractId !== 'Pending' && x.contractId !== '').length;
     const pendingContract = list.filter(x => !x.contractId || x.contractId === 'Pending' || x.contractId === '').length;
-    if (!Charts.updateChart('analytics-chart-contract', ['Completed', 'Pending'], [completedContract, pendingContract])) {
-      Charts.createDonutChart('analytics-chart-contract', ['Completed', 'Pending'], [completedContract, pendingContract]);
+    if (!Charts.updateChart('summary-chart-contract', ['Completed', 'Pending'], [completedContract, pendingContract])) {
+      Charts.createDonutChart('summary-chart-contract', ['Completed', 'Pending'], [completedContract, pendingContract]);
+    }
+  },
+
+  renderDemographicsCharts(list) {
+    // A. Gender Distribution
+    const maleCount = list.filter(x => String(x.sex || '').trim().toLowerCase() === 'male').length;
+    const femaleCount = list.filter(x => String(x.sex || '').trim().toLowerCase() === 'female').length;
+    const otherCount = list.filter(x => {
+      const s = String(x.sex || '').trim().toLowerCase();
+      return s !== 'male' && s !== 'female' && s !== '';
+    }).length;
+
+    const genders = ['Male', 'Female'];
+    const genderCounts = [maleCount, femaleCount];
+    if (otherCount > 0) {
+      genders.push('Other');
+      genderCounts.push(otherCount);
     }
 
-    // 5. Completion trend (computed from real data — last 6 months)
+    if (maleCount === 0 && femaleCount === 0 && otherCount === 0) {
+      if (!Charts.updateChart('demo-chart-gender', ['No Data'], [1])) {
+        Charts.createPieChart('demo-chart-gender', ['No Data'], [1]);
+      }
+    } else {
+      if (!Charts.updateChart('demo-chart-gender', genders, genderCounts)) {
+        Charts.createPieChart('demo-chart-gender', genders, genderCounts);
+      }
+    }
+
+    // B. Age Group Distribution
+    let u20 = 0, g20_22 = 0, g23_25 = 0, o26 = 0;
+    list.forEach(x => {
+      const ageNum = parseInt(x.age);
+      if (!isNaN(ageNum)) {
+        if (ageNum < 20) u20++;
+        else if (ageNum >= 20 && ageNum <= 22) g20_22++;
+        else if (ageNum >= 23 && ageNum <= 25) g23_25++;
+        else if (ageNum >= 26) o26++;
+      }
+    });
+
+    const ageLabels = ['Under 20', '20-22', '23-25', '26+'];
+    const ageCounts = [u20, g20_22, g23_25, o26];
+    if (!Charts.updateChart('demo-chart-age', ageLabels, ageCounts)) {
+      Charts.createBarChart('demo-chart-age', ageLabels, ageCounts, 'Apprentices', ChartPalette.violet);
+    }
+
+    // C. Location Breakdown
+    const locations = ['Kosamba', 'Jambusar', 'Halol', 'Vadodara'];
+    const locCounts = locations.map(loc => list.filter(x => String(x.location || '').toLowerCase().trim() === loc.toLowerCase().trim()).length);
+    if (!Charts.updateChart('demo-chart-location', locations, locCounts)) {
+      Charts.createBarChart('demo-chart-location', locations, locCounts, 'Total Apprentices', ChartPalette.success);
+    }
+  },
+
+  renderComplianceCharts(list) {
+    // A. Portal Registration Rates
+    const enrolled = list.filter(x => x.portalEnrollmentNumber && x.portalEnrollmentNumber !== 'Pending' && x.portalEnrollmentNumber !== '').length;
+    const portalPending = list.filter(x => !x.portalEnrollmentNumber || x.portalEnrollmentNumber === 'Pending' || x.portalEnrollmentNumber === '').length;
+    if (!Charts.updateChart('compliance-chart-portal', ['Enrolled', 'Pending'], [enrolled, portalPending])) {
+      Charts.createDonutChart('compliance-chart-portal', ['Enrolled', 'Pending'], [enrolled, portalPending]);
+    }
+
+    // B. Contract ID Status
+    const completedContract = list.filter(x => x.contractId && x.contractId !== 'Pending' && x.contractId !== '').length;
+    const pendingContract = list.filter(x => !x.contractId || x.contractId === 'Pending' || x.contractId === '').length;
+    if (!Charts.updateChart('compliance-chart-contract', ['Completed', 'Pending'], [completedContract, pendingContract])) {
+      Charts.createDonutChart('compliance-chart-contract', ['Completed', 'Pending'], [completedContract, pendingContract]);
+    }
+
+    // C. Apprentice Data Completeness
+    let totalFieldsChecked = 0;
+    let completedFieldsCount = 0;
+
+    list.forEach(x => {
+      const checkFields = ['phone', 'email', 'address', 'contractId', 'portalEnrollmentNumber', 'portalName'];
+      checkFields.forEach(field => {
+        totalFieldsChecked++;
+        const val = String(x[field] || '').trim();
+        if (val !== '' && val !== 'Pending' && val !== 'null') {
+          completedFieldsCount++;
+        }
+      });
+    });
+
+    const completenessRate = totalFieldsChecked > 0 ? Math.round((completedFieldsCount / totalFieldsChecked) * 100) : 0;
+    const incompletenessRate = 100 - completenessRate;
+
+    const completenessLabels = ['Complete Data fields', 'Missing/Pending fields'];
+    const completenessData = [completenessRate, incompletenessRate];
+
+    if (list.length === 0) {
+      if (!Charts.updateChart('compliance-chart-completeness', ['No Data'], [1])) {
+        Charts.createDonutChart('compliance-chart-completeness', ['No Data'], [1]);
+      }
+    } else {
+      if (!Charts.updateChart('compliance-chart-completeness', completenessLabels, completenessData)) {
+        Charts.createDonutChart('compliance-chart-completeness', completenessLabels, completenessData);
+      }
+    }
+  },
+
+  renderTrendsCharts(list) {
     const now = new Date();
     const last6Months = Array.from({ length: 6 }, (_, i) => {
       const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
       return { label: d.toLocaleString('default', { month: 'short' }), year: d.getFullYear(), month: d.getMonth() };
     });
-    const completionTrends = last6Months.map(m => allData.filter(x => {
+
+    const completionTrends = last6Months.map(m => list.filter(x => {
       if (!x.completionDate) return false;
       const d = new Date(x.completionDate);
       return d.getFullYear() === m.year && d.getMonth() === m.month;
     }).length);
-    const intakeTrends = last6Months.map(m => allData.filter(x => {
+
+    const intakeTrends = last6Months.map(m => list.filter(x => {
       if (!x.joined) return false;
       const d = new Date(x.joined);
       return d.getFullYear() === m.year && d.getMonth() === m.month;
     }).length);
+
     const trendLabels = last6Months.map(m => m.label);
-    if (!Charts.updateChart('analytics-chart-completion-trend', trendLabels, completionTrends)) {
-      Charts.createLineChart('analytics-chart-completion-trend', trendLabels, completionTrends, 'Completions', ChartPalette.violet);
+
+    if (!Charts.updateChart('trend-chart-completion', trendLabels, completionTrends)) {
+      Charts.createLineChart('trend-chart-completion', trendLabels, completionTrends, 'Completions', ChartPalette.violet);
     }
 
-    // 6. Intake trend line (computed from real data)
-    if (!Charts.updateChart('analytics-chart-intake-trend', trendLabels, intakeTrends)) {
-      Charts.createLineChart('analytics-chart-intake-trend', trendLabels, intakeTrends, 'Intakes', ChartPalette.primary);
+    if (!Charts.updateChart('trend-chart-intake', trendLabels, intakeTrends)) {
+      Charts.createLineChart('trend-chart-intake', trendLabels, intakeTrends, 'Intakes', ChartPalette.primary);
     }
   }
 };
 
 const ReportsPage = {
+  activeHeaders: [],
+  completedHeaders: [],
+
   init() {
     const role = AppDB.getRole();
     const branch = AppDB.getBranch();
@@ -2450,6 +2842,21 @@ const ReportsPage = {
     this.restoreFilters();
     this.bindChangeListeners();
 
+    // Fetch headers on load
+    const backendUrl = AppDB.getBackendUrl();
+    fetch(`${backendUrl}/api/reports/headers`, { headers: AppDB.apiHeaders() })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          this.activeHeaders = data.activeHeaders || [];
+          this.completedHeaders = data.completedHeaders || [];
+          this.renderColumnSelection();
+        }
+      })
+      .catch(err => {
+        console.error('Failed to load report headers:', err);
+      });
+
     // Custom Report Configurator Submit
     const form = document.getElementById('report-builder-form');
     if (form) {
@@ -2465,11 +2872,41 @@ const ReportsPage = {
       });
     }
 
+    // Select All Button
+    const selectAllBtn = document.getElementById('cols-select-all');
+    if (selectAllBtn) {
+      selectAllBtn.onclick = (e) => {
+        e.preventDefault();
+        const chks = document.querySelectorAll('.column-toggle-chk');
+        chks.forEach(chk => chk.checked = true);
+        const typeSelect = document.getElementById('report-filter-type');
+        if (typeSelect) {
+          const storageKey = this.getStorageKeyForType(typeSelect.value);
+          if (storageKey) this.saveColumnSelection(storageKey);
+        }
+      };
+    }
+
+    // Clear All Button
+    const clearAllBtn = document.getElementById('cols-clear-all');
+    if (clearAllBtn) {
+      clearAllBtn.onclick = (e) => {
+        e.preventDefault();
+        const chks = document.querySelectorAll('.column-toggle-chk');
+        chks.forEach(chk => chk.checked = false);
+        const typeSelect = document.getElementById('report-filter-type');
+        if (typeSelect) {
+          const storageKey = this.getStorageKeyForType(typeSelect.value);
+          if (storageKey) this.saveColumnSelection(storageKey);
+        }
+      };
+    }
+
     // Individual report card handlers
     const cards = document.querySelectorAll('.report-type-card');
     cards.forEach(card => {
       const reportType = card.getAttribute('data-report-type') || card.dataset.reportType;
-      
+
       const csvBtn = card.querySelector('.btn-export-csv');
       if (csvBtn) {
         csvBtn.onclick = (e) => {
@@ -2478,7 +2915,7 @@ const ReportsPage = {
           this.exportReport(reportType, 'csv', filters);
         };
       }
-      
+
       const excelBtn = card.querySelector('.btn-export-excel');
       if (excelBtn) {
         excelBtn.onclick = (e) => {
@@ -2487,7 +2924,7 @@ const ReportsPage = {
           this.exportReport(reportType, 'excel', filters);
         };
       }
-      
+
       const pdfBtn = card.querySelector('.btn-export-pdf');
       if (pdfBtn) {
         pdfBtn.onclick = (e) => {
@@ -2507,7 +2944,7 @@ const ReportsPage = {
     const searchInput = document.getElementById('report-filter-search');
     const dateStartInput = document.getElementById('report-filter-date-start');
     const dateEndInput = document.getElementById('report-filter-date-end');
-    
+
     const role = AppDB.getRole();
     const branch = AppDB.getBranch();
 
@@ -2522,6 +2959,89 @@ const ReportsPage = {
       completionDateStart: dateStartInput ? dateStartInput.value : '',
       completionDateEnd: dateEndInput ? dateEndInput.value : ''
     };
+  },
+
+  getStorageKeyForType(reportType) {
+    if (['active', 'missing_contract', 'missing_enrollment', 'missing_portal_name'].includes(reportType)) {
+      return 'pgp_cols_active';
+    } else if (['completed', 'permanent_conversion'].includes(reportType)) {
+      return 'pgp_cols_completed';
+    } else if (reportType === 'master') {
+      return 'pgp_cols_master';
+    }
+    return null;
+  },
+
+  getHeadersForType(reportType) {
+    if (['active', 'missing_contract', 'missing_enrollment', 'missing_portal_name'].includes(reportType)) {
+      return this.activeHeaders || [];
+    } else if (['completed', 'permanent_conversion'].includes(reportType)) {
+      return this.completedHeaders || [];
+    } else if (reportType === 'master') {
+      const unionSet = new Set([...(this.activeHeaders || []), ...(this.completedHeaders || [])]);
+      unionSet.delete('__rowNum');
+      return Array.from(unionSet);
+    }
+    return [];
+  },
+
+  renderColumnSelection() {
+    const typeSelect = document.getElementById('report-filter-type');
+    if (!typeSelect) return;
+    const reportType = typeSelect.value;
+    
+    const card = document.getElementById('column-selection-card');
+    const grid = document.getElementById('columns-checkboxes-grid');
+    if (!card || !grid) return;
+
+    const storageKey = this.getStorageKeyForType(reportType);
+    const headers = this.getHeadersForType(reportType);
+
+    if (!storageKey || headers.length === 0) {
+      card.style.display = 'none';
+      return;
+    }
+
+    card.style.display = 'block';
+
+    // Retrieve saved column preferences
+    let saved = [];
+    const savedStr = localStorage.getItem(storageKey);
+    if (savedStr) {
+      try {
+        saved = JSON.parse(savedStr);
+      } catch (e) {
+        saved = [];
+      }
+    }
+
+    const useDefault = !savedStr || !Array.isArray(saved);
+
+    grid.innerHTML = '';
+    headers.forEach(h => {
+      const isChecked = useDefault || saved.includes(h);
+      const checkboxId = `col-chk-${h.replace(/\s+/g, '_')}`;
+      
+      grid.innerHTML += `
+        <label class="align-center d-flex gap-2 cursor-pointer text-sm" style="user-select: none;">
+          <input type="checkbox" class="column-toggle-chk" value="${h}" id="${checkboxId}" ${isChecked ? 'checked' : ''} style="accent-color: var(--brand-primary); cursor: pointer;">
+          <span>${h}</span>
+        </label>
+      `;
+    });
+
+    // Save on toggle
+    const chks = grid.querySelectorAll('.column-toggle-chk');
+    chks.forEach(chk => {
+      chk.addEventListener('change', () => {
+        this.saveColumnSelection(storageKey);
+      });
+    });
+  },
+
+  saveColumnSelection(storageKey) {
+    const checkedValues = Array.from(document.querySelectorAll('.column-toggle-chk:checked')).map(chk => chk.value);
+    localStorage.setItem(storageKey, JSON.stringify(checkedValues));
   },
 
   bindChangeListeners() {
@@ -2551,7 +3071,12 @@ const ReportsPage = {
       }
     };
 
-    if (typeEl) typeEl.addEventListener('change', saveFilters);
+    if (typeEl) {
+      typeEl.addEventListener('change', () => {
+        saveFilters();
+        this.renderColumnSelection();
+      });
+    }
     if (locEl) locEl.addEventListener('change', saveFilters);
     if (deptEl) deptEl.addEventListener('change', saveFilters);
     if (statusEl) statusEl.addEventListener('change', saveFilters);
@@ -2559,7 +3084,7 @@ const ReportsPage = {
     if (searchEl) searchEl.addEventListener('input', debounce(saveFilters, 300));
     if (dateStartEl) dateStartEl.addEventListener('change', saveFilters);
     if (dateEndEl) dateEndEl.addEventListener('change', saveFilters);
-    
+
     formatEls.forEach(el => {
       el.addEventListener('change', saveFilters);
     });
@@ -2574,7 +3099,7 @@ const ReportsPage = {
     const searchEl = document.getElementById('report-filter-search');
     const dateStartEl = document.getElementById('report-filter-date-start');
     const dateEndEl = document.getElementById('report-filter-date-end');
-    
+
     const role = AppDB.getRole();
     const branch = AppDB.getBranch();
 
@@ -2617,10 +3142,10 @@ const ReportsPage = {
 
   async exportReport(reportType, format, filters) {
     const backendUrl = AppDB.getBackendUrl();
-    
+
     // Toast loading preview
     const previewToast = Toast.info('Analyzing Database', 'Running database structure and count preview...', 3000);
-    
+
     try {
       // 1. Call `/api/reports/preview` first
       const previewRes = await fetch(`${backendUrl}/api/reports/preview`, {
@@ -2628,22 +3153,44 @@ const ReportsPage = {
         headers: AppDB.apiHeaders(),
         body: JSON.stringify({ reportType, filters })
       });
-      
+
       if (previewToast) previewToast.close();
 
       if (!previewRes.ok) {
         const errData = await previewRes.json();
         throw new Error(errData.error || 'Failed to generate preview metrics.');
       }
-      
+
       const previewData = await previewRes.json();
-      
+
       // 2. Prevent blank files (0 records check)
       if (previewData.count === 0) {
         Toast.warning('No Records', 'No records found for selected filters. Export stopped.', 4000);
         return;
       }
-      
+
+      // Determine selected columns for export payload
+      let selectedColumns = undefined;
+      const storageKey = this.getStorageKeyForType(reportType);
+      if (storageKey) {
+        const typeSelect = document.getElementById('report-filter-type');
+        if (typeSelect && typeSelect.value === reportType) {
+          selectedColumns = Array.from(document.querySelectorAll('.column-toggle-chk:checked')).map(chk => chk.value);
+        } else {
+          const savedStr = localStorage.getItem(storageKey);
+          if (savedStr) {
+            try {
+              selectedColumns = JSON.parse(savedStr);
+            } catch (e) {
+              selectedColumns = undefined;
+            }
+          }
+          if (!selectedColumns) {
+            selectedColumns = this.getHeadersForType(reportType);
+          }
+        }
+      }
+
       // 3. Render Report Preview Confirmation Modal
       ModalManager.showReportPreviewModal({
         reportName: previewData.reportName,
@@ -2654,27 +3201,27 @@ const ReportsPage = {
         depts: previewData.departmentsIncluded,
         onConfirm: async () => {
           let progress = null;
-          
+
           // 4. Large report background generation (> 5000 records)
           if (previewData.count > 5000) {
             progress = ModalManager.showReportProgress();
             progress.update('preparing', 'Preparing data payload and structure check...');
-            
+
             setTimeout(() => {
               if (progress) progress.update('generating', 'Compiling sheet cells and writing columns...');
             }, 1000);
           } else {
             Toast.info('Compiling Report', `Exporting report in ${format.toUpperCase()} format...`, 2000);
           }
-          
+
           try {
             // 5. Trigger download export
             const exportRes = await fetch(`${backendUrl}/api/reports/export`, {
               method: 'POST',
               headers: AppDB.apiHeaders(),
-              body: JSON.stringify({ reportType, format, filters })
+              body: JSON.stringify({ reportType, format, filters, selectedColumns })
             });
-            
+
             if (!exportRes.ok) {
               const errText = await exportRes.text();
               let errMsg = 'Failed to compile report.';
@@ -2686,14 +3233,14 @@ const ReportsPage = {
               }
               throw new Error(errMsg);
             }
-            
+
             // 6. Download blob file
             const blob = await exportRes.blob();
-            
+
             if (progress) {
               progress.update('ready', 'Report generation complete. Downloading file...');
             }
-            
+
             const disposition = exportRes.headers.get('Content-Disposition');
             let filename = `Report_${reportType}_${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'xlsx' : format}`;
             if (disposition && disposition.indexOf('filename=') !== -1) {
@@ -2715,20 +3262,11 @@ const ReportsPage = {
               blobType: blob.type
             };
             localStorage.setItem('export_evidence', JSON.stringify(evidence));
-            // console.log("EXPORT_EVIDENCE_CAPTURED", evidence);
 
             // Guard: reject empty blobs before triggering download
             if (blob.size === 0) {
               throw new Error('Report export returned an empty file (0 bytes). Backend may have failed silently.');
             }
-
-            // console.log('[REPORT_DOWNLOAD]', {
-            //   filename,
-            //   blobSize: blob.size,
-            //   blobType: blob.type,
-            //   contentDisposition: disposition,
-            //   responseStatus: exportRes.status
-            // });
 
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -2736,15 +3274,13 @@ const ReportsPage = {
             a.download = filename;
             document.body.appendChild(a);
             a.click();
-            // Defer URL revocation — revoking synchronously after click() cancels the download
-            // before the browser can read the blob, causing UUID-named broken files.
             setTimeout(() => {
               a.remove();
               window.URL.revokeObjectURL(url);
             }, 150);
-            
+
             Toast.success('Export Ready', `${previewData.reportName} has been downloaded successfully.`, 3000);
-            
+
             // Dynamically update the Recent Export Task Logs table
             const exportLogTbody = document.querySelector('.table-custom tbody');
             if (exportLogTbody) {
@@ -2775,7 +3311,7 @@ const ReportsPage = {
           }
         }
       });
-      
+
     } catch (err) {
       if (previewToast) previewToast.close();
       console.error('Preview Action Failed:', err);
@@ -2870,7 +3406,7 @@ const UsersPage = {
           }
           const addEye = document.getElementById('pwd-eye-add');
           if (addEye) addEye.className = 'fas fa-eye';
-          
+
           Toast.success('User Added', `${name} successfully registered.`, 2500);
           await this.renderUsers();
         } catch (err) {
@@ -2896,7 +3432,7 @@ const UsersPage = {
             document.getElementById('edit-user-email').value = user.email;
             document.getElementById('edit-user-role').value = user.role;
             document.getElementById('edit-user-location').value = user.location;
-            
+
             // Clear password reset field in edit modal when opening
             const editPwd = document.getElementById('edit-user-password');
             if (editPwd) {
@@ -3150,7 +3686,12 @@ const SkeletonManager = {
   },
 
   showAnalytics() {
-    const charts = ['analytics-chart-location', 'analytics-chart-department', 'analytics-chart-portal', 'analytics-chart-contract', 'analytics-chart-completion-trend', 'analytics-chart-intake-trend'];
+    const charts = [
+      'summary-chart-location', 'summary-chart-department', 'summary-chart-portal', 'summary-chart-contract',
+      'demo-chart-gender', 'demo-chart-age', 'demo-chart-location',
+      'compliance-chart-portal', 'compliance-chart-contract', 'compliance-chart-completeness',
+      'trend-chart-intake', 'trend-chart-completion'
+    ];
     charts.forEach(id => {
       const canvas = document.getElementById(id);
       if (canvas && canvas.parentNode) {
@@ -3168,7 +3709,12 @@ const SkeletonManager = {
   },
 
   hideAnalytics() {
-    const charts = ['analytics-chart-location', 'analytics-chart-department', 'analytics-chart-portal', 'analytics-chart-contract', 'analytics-chart-completion-trend', 'analytics-chart-intake-trend'];
+    const charts = [
+      'summary-chart-location', 'summary-chart-department', 'summary-chart-portal', 'summary-chart-contract',
+      'demo-chart-gender', 'demo-chart-age', 'demo-chart-location',
+      'compliance-chart-portal', 'compliance-chart-contract', 'compliance-chart-completeness',
+      'trend-chart-intake', 'trend-chart-completion'
+    ];
     charts.forEach(id => {
       const canvas = document.getElementById(id);
       if (canvas) {
@@ -3540,7 +4086,7 @@ function printNavigationPerformanceReport() {
   console.log(`3. DOMContentLoaded to Init:    ${domToInit} ms`);
   console.log(`4. Init to Render Complete:     ${initToRender} ms`);
   console.log('====================================================');
-  
+
   // Clear transition timestamps but keep for report
   sessionStorage.removeItem('pgp_perf_click_time');
 }

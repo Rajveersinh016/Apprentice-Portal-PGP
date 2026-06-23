@@ -35,6 +35,10 @@ router.get('/history', authMiddleware, async (req, res) => {
 });
 
 router.post('/', authMiddleware, (req, res, next) => {
+  const isJson = req.headers['content-type'] && req.headers['content-type'].includes('application/json');
+  if (isJson) {
+    return next();
+  }
   upload.single('file')(req, res, (err) => {
     if (err instanceof multer.MulterError) {
       if (err.code === 'LIMIT_FILE_SIZE') {
@@ -49,6 +53,7 @@ router.post('/', authMiddleware, (req, res, next) => {
 }, async (req, res) => {
   const file = req.file;
   const user = req.user;
+  const dryRun = req.query.dryRun === 'true' || req.query.dryRun === true;
 
   // Only Super HR accounts can trigger imports
   if (user.role !== 'Super HR') {
@@ -177,9 +182,10 @@ router.post('/', authMiddleware, (req, res, next) => {
 
     } else if (req.body && req.body.records && Array.isArray(req.body.records)) {
       // Support JSON payload
+      originalName = req.body.fileName || 'JSON Payload';
       parsedRecords = req.body.records.map((rec, idx) => ({
         ...rec,
-        __rowNum: idx + 1 // Fallback row number for JSON input
+        __rowNum: rec.__rowNum || (idx + 1)
       }));
     } else {
       return res.status(400).json({ success: false, error: 'No file or records uploaded.' });
@@ -191,12 +197,15 @@ router.post('/', authMiddleware, (req, res, next) => {
 
     // 6. Submit to database manager for reconciliation
     const updatedBy = `Super HR Admin (${user.name})`;
-    console.log(`[DEBUG UPLOAD] Submitting ${parsedRecords.length} parsed records to sheetsService for file: ${originalName}`);
-    const report = await sheetsService.upsertActiveApprentices(parsedRecords, updatedBy, originalName);
+    console.log(`[DEBUG UPLOAD] Submitting ${parsedRecords.length} parsed records to sheetsService for file: ${originalName} (dryRun: ${dryRun})`);
+    const report = await sheetsService.upsertActiveApprentices(parsedRecords, updatedBy, originalName, dryRun);
     console.log(`[DEBUG UPLOAD] Import outcome: Inserted=${report.inserted}, Updated=${report.updated}, DuplicatesRemoved=${report.duplicatesRemoved}, Rejected=${report.rejected.length}`);
-    analyticsCache.invalidate();
+    
+    if (!dryRun) {
+      analyticsCache.invalidate();
+    }
 
-    return res.json({
+    const responsePayload = {
       success: true,
       inserted: report.inserted,
       updated: report.updated,
@@ -206,7 +215,13 @@ router.post('/', authMiddleware, (req, res, next) => {
       totalProcessed: report.totalProcessed,
       executionTime: report.executionTime,
       uploadSuccess: report.uploadSuccess
-    });
+    };
+
+    if (dryRun) {
+      responsePayload.records = parsedRecords;
+    }
+
+    return res.json(responsePayload);
 
   } catch (err) {
     console.error('Upload route error:', err);

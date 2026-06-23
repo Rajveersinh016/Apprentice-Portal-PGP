@@ -13,6 +13,56 @@
   <link rel="stylesheet" href="../assets/css/components.css?v=2.0">
   <link rel="stylesheet" href="../assets/css/dashboard.css?v=2.0">
   <link rel="stylesheet" href="../assets/css/responsive.css?v=2.0">
+  <style>
+    /* Style for filter grid */
+    .filter-controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: var(--space-4);
+    }
+    
+    /* Tabs selector styling */
+    .analytics-tabs {
+      display: flex;
+      gap: var(--space-2);
+      border-bottom: 2px solid var(--border-default);
+      margin-bottom: var(--space-6);
+      flex-wrap: wrap;
+    }
+    
+    .analytics-tab-btn {
+      padding: var(--space-3) var(--space-5);
+      font-weight: 600;
+      border: none;
+      background: none;
+      border-bottom: 3px solid transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-size: 14px;
+      transition: all var(--transition-base);
+    }
+    
+    .analytics-tab-btn:hover {
+      color: var(--brand-primary);
+    }
+    
+    .analytics-tab-btn.active {
+      border-bottom-color: var(--brand-primary);
+      color: var(--brand-primary);
+    }
+    
+    /* Fade animations */
+    .analytics-section {
+      display: none;
+    }
+    
+    .analytics-section.active {
+      display: block;
+    }
+  </style>
 </head>
 <body>
 
@@ -54,88 +104,253 @@
         </div>
       </div>
 
-      <!-- Charts layout grids -->
-      <div class="dashboard-grid mb-6">
-        
-        <!-- Graph 1: Location wise comparison -->
-        <div class="card-custom chart-card">
-          <div class="card-custom-header">
-            <h3 class="card-custom-title"><div class="card-icon"><i class="fas fa-map-marker-alt"></i></div>Location Comparison</h3>
+      <!-- Advanced Analytics Controls -->
+      <div class="card-custom mb-6">
+        <div class="card-custom-header">
+          <h3 class="card-custom-title">
+            <div class="card-icon"><i class="fas fa-filter"></i></div>
+            Interactive Data Filters
+          </h3>
+          <div class="card-custom-actions">
+            <button class="btn-secondary-custom btn-sm" id="btn-reset-analytics-filters">
+              <i class="fas fa-sync-alt me-1"></i> Reset Filters
+            </button>
           </div>
-          <div class="card-custom-body">
-            <div class="chart-container">
-              <canvas id="analytics-chart-location"></canvas>
+        </div>
+        <div class="card-custom-body">
+          <div class="filter-controls-grid">
+            <!-- Filter: Location -->
+            <div class="form-group-custom">
+              <label class="form-label" style="font-weight: 600; font-size: 12px; margin-bottom: 6px; display: block; color: var(--text-primary);">Location</label>
+              <select id="analytics-filter-location" class="form-control-custom select-custom">
+                <option value="All Locations">All Locations</option>
+                <option value="Kosamba">Kosamba</option>
+                <option value="Jambusar">Jambusar</option>
+                <option value="Halol">Halol</option>
+                <option value="Vadodara">Vadodara</option>
+              </select>
+            </div>
+            
+            <!-- Filter: Department -->
+            <div class="form-group-custom">
+              <label class="form-label" style="font-weight: 600; font-size: 12px; margin-bottom: 6px; display: block; color: var(--text-primary);">Department</label>
+              <select id="analytics-filter-dept" class="form-control-custom select-custom">
+                <option value="All">All Departments</option>
+              </select>
+            </div>
+            
+            <!-- Filter: Status -->
+            <div class="form-group-custom">
+              <label class="form-label" style="font-weight: 600; font-size: 12px; margin-bottom: 6px; display: block; color: var(--text-primary);">Status</label>
+              <select id="analytics-filter-status" class="form-control-custom select-custom">
+                <option value="All">All Statuses</option>
+                <option value="Active">Active</option>
+                <option value="Completed">Completed</option>
+              </select>
+            </div>
+
+            <!-- Filter: Gender -->
+            <div class="form-group-custom">
+              <label class="form-label" style="font-weight: 600; font-size: 12px; margin-bottom: 6px; display: block; color: var(--text-primary);">Gender</label>
+              <select id="analytics-filter-gender" class="form-control-custom select-custom">
+                <option value="All">All Genders</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
+            </div>
+
+            <!-- Filter: Age Group -->
+            <div class="form-group-custom">
+              <label class="form-label" style="font-weight: 600; font-size: 12px; margin-bottom: 6px; display: block; color: var(--text-primary);">Age Group</label>
+              <select id="analytics-filter-age" class="form-control-custom select-custom">
+                <option value="All">All Ages</option>
+                <option value="Under 20">Under 20</option>
+                <option value="20-22">20 - 22</option>
+                <option value="23-25">23 - 25</option>
+                <option value="26+">26+</option>
+              </select>
+            </div>
+
+            <!-- Filter: Joining Date Start -->
+            <div class="form-group-custom">
+              <label class="form-label" style="font-weight: 600; font-size: 12px; margin-bottom: 6px; display: block; color: var(--text-primary);">Joined From</label>
+              <input type="date" id="analytics-filter-date-start" class="form-control-custom">
+            </div>
+
+            <!-- Filter: Joining Date End -->
+            <div class="form-group-custom">
+              <label class="form-label" style="font-weight: 600; font-size: 12px; margin-bottom: 6px; display: block; color: var(--text-primary);">Joined To</label>
+              <input type="date" id="analytics-filter-date-end" class="form-control-custom">
             </div>
           </div>
         </div>
-
-        <!-- Graph 2: Department Wise -->
-        <div class="card-custom chart-card">
-          <div class="card-custom-header">
-            <h3 class="card-custom-title"><div class="card-icon"><i class="fas fa-building"></i></div>Department Distribution</h3>
-          </div>
-          <div class="card-custom-body">
-            <div class="chart-container">
-              <canvas id="analytics-chart-department"></canvas>
-            </div>
-          </div>
-        </div>
-
       </div>
 
-      <div class="dashboard-grid mb-6">
-        
-        <!-- Graph 3: Portal Status -->
-        <div class="card-custom chart-card">
-          <div class="card-custom-header">
-            <h3 class="card-custom-title"><div class="card-icon"><i class="fas fa-link"></i></div>Portal Enrollment Status</h3>
-          </div>
-          <div class="card-custom-body">
-            <div class="chart-container">
-              <canvas id="analytics-chart-portal"></canvas>
-            </div>
-          </div>
-        </div>
-
-        <!-- Graph 4: Contract ID Status -->
-        <div class="card-custom chart-card">
-          <div class="card-custom-header">
-            <h3 class="card-custom-title"><div class="card-icon"><i class="fas fa-file-signature"></i></div>Contract ID Status</h3>
-          </div>
-          <div class="card-custom-body">
-            <div class="chart-container">
-              <canvas id="analytics-chart-contract"></canvas>
-            </div>
-          </div>
-        </div>
-
+      <!-- View Selector Tabs -->
+      <div class="analytics-tabs">
+        <button class="analytics-tab-btn active" data-analytics-type="summary">
+          <i class="fas fa-chart-pie"></i> Summary Dashboard
+        </button>
+        <button class="analytics-tab-btn" data-analytics-type="demographics">
+          <i class="fas fa-users"></i> Demographics
+        </button>
+        <button class="analytics-tab-btn" data-analytics-type="compliance">
+          <i class="fas fa-shield-alt"></i> Compliance & Ops
+        </button>
+        <button class="analytics-tab-btn" data-analytics-type="trends">
+          <i class="fas fa-chart-line"></i> Trends & Forecasts
+        </button>
       </div>
 
-      <div class="dashboard-grid">
-        
-        <!-- Graph 5: Completion Trend -->
-        <div class="card-custom chart-card">
-          <div class="card-custom-header">
-            <h3 class="card-custom-title"><div class="card-icon"><i class="fas fa-graduation-cap"></i></div>Completion Trend</h3>
+      <!-- Section: Summary Dashboard -->
+      <div id="section-summary" class="analytics-section active animate-fadeIn">
+        <div class="dashboard-grid mb-6">
+          <div class="card-custom chart-card">
+            <div class="card-custom-header">
+              <h3 class="card-custom-title"><div class="card-icon"><i class="fas fa-map-marker-alt"></i></div>Location Comparison</h3>
+            </div>
+            <div class="card-custom-body">
+              <div class="chart-container">
+                <canvas id="summary-chart-location"></canvas>
+              </div>
+            </div>
           </div>
-          <div class="card-custom-body">
-            <div class="chart-container">
-              <canvas id="analytics-chart-completion-trend"></canvas>
+          <div class="card-custom chart-card">
+            <div class="card-custom-header">
+              <h3 class="card-custom-title"><div class="card-icon"><i class="fas fa-building"></i></div>Department Distribution</h3>
+            </div>
+            <div class="card-custom-body">
+              <div class="chart-container">
+                <canvas id="summary-chart-department"></canvas>
+              </div>
             </div>
           </div>
         </div>
+        <div class="dashboard-grid">
+          <div class="card-custom chart-card">
+            <div class="card-custom-header">
+              <h3 class="card-custom-title"><div class="card-icon"><i class="fas fa-link"></i></div>Portal Enrollment Status</h3>
+            </div>
+            <div class="card-custom-body">
+              <div class="chart-container">
+                <canvas id="summary-chart-portal"></canvas>
+              </div>
+            </div>
+          </div>
+          <div class="card-custom chart-card">
+            <div class="card-custom-header">
+              <h3 class="card-custom-title"><div class="card-icon"><i class="fas fa-file-signature"></i></div>Contract ID Status</h3>
+            </div>
+            <div class="card-custom-body">
+              <div class="chart-container">
+                <canvas id="summary-chart-contract"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-        <!-- Graph 6: Monthly Intake Trend -->
-        <div class="card-custom chart-card">
-          <div class="card-custom-header">
-            <h3 class="card-custom-title"><div class="card-icon"><i class="fas fa-chart-line"></i></div>Monthly Intake Trend</h3>
+      <!-- Section: Demographics -->
+      <div id="section-demographics" class="analytics-section animate-fadeIn">
+        <div class="dashboard-grid mb-6">
+          <div class="card-custom chart-card">
+            <div class="card-custom-header">
+              <h3 class="card-custom-title"><div class="card-icon"><i class="fas fa-venus-mars"></i></div>Gender Distribution</h3>
+            </div>
+            <div class="card-custom-body">
+              <div class="chart-container">
+                <canvas id="demo-chart-gender"></canvas>
+              </div>
+            </div>
           </div>
-          <div class="card-custom-body">
-            <div class="chart-container">
-              <canvas id="analytics-chart-intake-trend"></canvas>
+          <div class="card-custom chart-card">
+            <div class="card-custom-header">
+              <h3 class="card-custom-title"><div class="card-icon"><i class="fas fa-birthday-cake"></i></div>Age Distribution</h3>
+            </div>
+            <div class="card-custom-body">
+              <div class="chart-container">
+                <canvas id="demo-chart-age"></canvas>
+              </div>
             </div>
           </div>
         </div>
+        <div class="dashboard-grid">
+          <div class="card-custom chart-card col-span-2">
+            <div class="card-custom-header">
+              <h3 class="card-custom-title"><div class="card-icon"><i class="fas fa-map-marked-alt"></i></div>Location Breakdown</h3>
+            </div>
+            <div class="card-custom-body">
+              <div class="chart-container">
+                <canvas id="demo-chart-location"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Compliance & Ops -->
+      <div id="section-compliance" class="analytics-section animate-fadeIn">
+        <div class="dashboard-grid mb-6">
+          <div class="card-custom chart-card">
+            <div class="card-custom-header">
+              <h3 class="card-custom-title"><div class="card-icon"><i class="fas fa-link"></i></div>Portal Registration Rates</h3>
+            </div>
+            <div class="card-custom-body">
+              <div class="chart-container">
+                <canvas id="compliance-chart-portal"></canvas>
+              </div>
+            </div>
+          </div>
+          <div class="card-custom chart-card">
+            <div class="card-custom-header">
+              <h3 class="card-custom-title"><div class="card-icon"><i class="fas fa-file-contract"></i></div>Contract ID Generation</h3>
+            </div>
+            <div class="card-custom-body">
+              <div class="chart-container">
+                <canvas id="compliance-chart-contract"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="dashboard-grid">
+          <div class="card-custom chart-card col-span-2">
+            <div class="card-custom-header">
+              <h3 class="card-custom-title"><div class="card-icon"><i class="fas fa-check-circle"></i></div>Apprentice Data Completeness</h3>
+            </div>
+            <div class="card-custom-body">
+              <div class="chart-container" style="height: 350px;">
+                <canvas id="compliance-chart-completeness"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Trends & Forecasts -->
+      <div id="section-trends" class="analytics-section animate-fadeIn">
+        <div class="dashboard-grid mb-6">
+          <div class="card-custom chart-card">
+            <div class="card-custom-header">
+              <h3 class="card-custom-title"><div class="card-icon"><i class="fas fa-sign-in-alt"></i></div>Monthly Intake Trend</h3>
+            </div>
+            <div class="card-custom-body">
+              <div class="chart-container">
+                <canvas id="trend-chart-intake"></canvas>
+              </div>
+            </div>
+          </div>
+          <div class="card-custom chart-card">
+            <div class="card-custom-header">
+              <h3 class="card-custom-title"><div class="card-icon"><i class="fas fa-graduation-cap"></i></div>Completion Trend</h3>
+            </div>
+            <div class="card-custom-body">
+              <div class="chart-container">
+                <canvas id="trend-chart-completion"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       </div>
 
