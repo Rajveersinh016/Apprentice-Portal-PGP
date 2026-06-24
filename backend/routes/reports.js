@@ -184,11 +184,13 @@ function applyFilters(records, filters) {
   }
 
   // 8. Completion Date range
+  // Only apply to completed records (those that have a completionDate).
+  // Active apprentices have no completionDate and should not be excluded by this filter.
   if (filters.completionDateStart) {
-    filtered = filtered.filter(x => x.completionDate && x.completionDate >= filters.completionDateStart);
+    filtered = filtered.filter(x => !x.completionDate || x.completionDate >= filters.completionDateStart);
   }
   if (filters.completionDateEnd) {
-    filtered = filtered.filter(x => x.completionDate && x.completionDate <= filters.completionDateEnd);
+    filtered = filtered.filter(x => !x.completionDate || x.completionDate <= filters.completionDateEnd);
   }
 
   return filtered;
