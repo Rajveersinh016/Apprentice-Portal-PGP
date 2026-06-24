@@ -10,7 +10,16 @@ const usersRoutes = require('./routes/users');
 const sheetsService = require('./services/sheetsService');
 const { uploadRateLimiter, exportRateLimiter } = require('./middleware/rateLimiter');
 
-dotenv.config();
+// Load .env first, then .env.local as fallback (supports both local dev and Vercel deployments)
+const envPath = path.resolve(__dirname, '../.env');
+const envLocalPath = path.resolve(__dirname, '../.env.local');
+if (fs.existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+} else if (fs.existsSync(envLocalPath)) {
+  dotenv.config({ path: envLocalPath });
+} else {
+  dotenv.config(); // default fallback
+}
 
 // ============================================================
 // PRIORITY 8 — PRODUCTION ENVIRONMENT VALIDATION

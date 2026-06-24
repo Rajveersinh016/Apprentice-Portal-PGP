@@ -4,6 +4,13 @@ const fs = require('fs');
 const dotenv = require('dotenv');
 
 dotenv.config();
+// Also try .env.local as fallback (for local dev without a .env file)
+if (!process.env.SPREADSHEET_ID) {
+  const localPath = path.resolve(__dirname, '../../.env.local');
+  if (fs.existsSync(localPath)) {
+    dotenv.config({ path: localPath });
+  }
+}
 
 const spreadsheetId = process.env.SPREADSHEET_ID;
 const keyPath = path.resolve(__dirname, '..', process.env.GOOGLE_APPLICATION_CREDENTIALS || './config/service-account.json');

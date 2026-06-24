@@ -1476,8 +1476,25 @@ const ApprenticesPage = {
         const matchesStatus = status === '' || x.status === status;
 
         let matchesDate = true;
-        if (start) matchesDate = matchesDate && x.joined >= start;
-        if (end) matchesDate = matchesDate && x.joined <= end;
+        const parseDateSafe = (dateStr) => {
+          if (!dateStr) return null;
+          const d = new Date(dateStr);
+          return isNaN(d.getTime()) ? null : d;
+        };
+        if (start) {
+          const startLimit = parseDateSafe(start);
+          const joinedDate = parseDateSafe(x.joined);
+          if (startLimit && joinedDate) {
+            matchesDate = matchesDate && joinedDate >= startLimit;
+          }
+        }
+        if (end) {
+          const endLimit = parseDateSafe(end);
+          const joinedDate = parseDateSafe(x.joined);
+          if (endLimit && joinedDate) {
+            matchesDate = matchesDate && joinedDate <= endLimit;
+          }
+        }
 
         return matchesSearch && matchesDept && matchesStatus && matchesDate;
       });
@@ -1891,10 +1908,10 @@ const ApprenticeDetailPage = {
     const stdKeys = [
       'code', 'name', 'location', 'dept', 'joined', 'sex', 'age', 'phone', 'email', 'address', 'remarks',
       'contractId', 'portalEnrollmentNumber', 'portalName', 'status', 'completionDate', 'completedBy',
-      'updatedBy', 'updatedDate',
+      'updatedBy', 'updatedDate', 'completionReason', 'otherCompletionReason', 'completionRemarks',
       'Employee Code', 'Full Name', 'Location', 'Department', 'Joining Date', 'Sex', 'Age', 'Phone', 'Email', 'Address', 'Remarks',
       'Employee Contract ID', 'Portal Enrollment Number', 'Portal Name', 'Record Status', 'Updated By', 'Updated Date',
-      'Completion Date', 'Completed By'
+      'Completion Date', 'Completed By', 'Completion Reason', 'Other Completion Reason', 'Completion Remarks'
     ];
 
     this.dynamicFields = [];
@@ -2867,7 +2884,7 @@ const ReportsPage = {
         const formatEl = document.querySelector('input[name="report-format"]:checked');
         const format = formatEl ? formatEl.value : 'csv';
 
-        const filters = this.getCurrentFilters();
+        const filters = this.getCurrentFilters(reportType);
         this.exportReport(reportType, format, filters);
       });
     }
@@ -2911,7 +2928,7 @@ const ReportsPage = {
       if (csvBtn) {
         csvBtn.onclick = (e) => {
           e.preventDefault();
-          const filters = this.getCurrentFilters();
+          const filters = this.getCurrentFilters(reportType);
           this.exportReport(reportType, 'csv', filters);
         };
       }
@@ -2920,7 +2937,7 @@ const ReportsPage = {
       if (excelBtn) {
         excelBtn.onclick = (e) => {
           e.preventDefault();
-          const filters = this.getCurrentFilters();
+          const filters = this.getCurrentFilters(reportType);
           this.exportReport(reportType, 'excel', filters);
         };
       }
@@ -2929,14 +2946,14 @@ const ReportsPage = {
       if (pdfBtn) {
         pdfBtn.onclick = (e) => {
           e.preventDefault();
-          const filters = this.getCurrentFilters();
+          const filters = this.getCurrentFilters(reportType);
           this.exportReport(reportType, 'pdf', filters);
         };
       }
     });
   },
 
-  getCurrentFilters() {
+  getCurrentFilters(reportType) {
     const locSelect = document.getElementById('report-filter-location');
     const deptSelect = document.getElementById('report-filter-dept');
     const statusSelect = document.getElementById('report-filter-status');
@@ -2945,8 +2962,13 @@ const ReportsPage = {
     const dateStartInput = document.getElementById('report-filter-date-start');
     const dateEndInput = document.getElementById('report-filter-date-end');
 
+    const typeSelect = document.getElementById('report-filter-type');
+    const activeType = reportType || (typeSelect ? typeSelect.value : 'master');
+
     const role = AppDB.getRole();
     const branch = AppDB.getBranch();
+
+    const isCompletedReport = ['completed', 'permanent_conversion'].includes(activeType);
 
     return {
       location: role === 'Branch HR' ? branch : (locSelect ? locSelect.value : 'All Locations'),
@@ -2954,10 +2976,10 @@ const ReportsPage = {
       status: statusSelect ? statusSelect.value : 'All',
       gender: genderSelect ? genderSelect.value : 'All',
       search: searchInput ? searchInput.value.trim() : '',
-      joiningDateStart: dateStartInput ? dateStartInput.value : '',
-      joiningDateEnd: dateEndInput ? dateEndInput.value : '',
-      completionDateStart: dateStartInput ? dateStartInput.value : '',
-      completionDateEnd: dateEndInput ? dateEndInput.value : ''
+      joiningDateStart: !isCompletedReport && dateStartInput ? dateStartInput.value : '',
+      joiningDateEnd: !isCompletedReport && dateEndInput ? dateEndInput.value : '',
+      completionDateStart: isCompletedReport && dateStartInput ? dateStartInput.value : '',
+      completionDateEnd: isCompletedReport && dateEndInput ? dateEndInput.value : ''
     };
   },
 

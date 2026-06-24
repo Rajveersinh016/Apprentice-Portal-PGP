@@ -176,21 +176,53 @@ function applyFilters(records, filters) {
   }
 
   // 7. Joining Date range
+  const parseDateSafe = (dateVal) => {
+    if (!dateVal) return null;
+    const d = new Date(dateVal);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
   if (filters.joiningDateStart) {
-    filtered = filtered.filter(x => x.joined && x.joined >= filters.joiningDateStart);
+    const startLimit = parseDateSafe(filters.joiningDateStart);
+    if (startLimit) {
+      filtered = filtered.filter(x => {
+        const joinedDate = parseDateSafe(x.joined);
+        return joinedDate && joinedDate >= startLimit;
+      });
+    }
   }
   if (filters.joiningDateEnd) {
-    filtered = filtered.filter(x => x.joined && x.joined <= filters.joiningDateEnd);
+    const endLimit = parseDateSafe(filters.joiningDateEnd);
+    if (endLimit) {
+      filtered = filtered.filter(x => {
+        const joinedDate = parseDateSafe(x.joined);
+        return joinedDate && joinedDate <= endLimit;
+      });
+    }
   }
 
   // 8. Completion Date range
   // Only apply to completed records (those that have a completionDate).
   // Active apprentices have no completionDate and should not be excluded by this filter.
   if (filters.completionDateStart) {
-    filtered = filtered.filter(x => !x.completionDate || x.completionDate >= filters.completionDateStart);
+    const startLimit = parseDateSafe(filters.completionDateStart);
+    if (startLimit) {
+      filtered = filtered.filter(x => {
+        if (!x.completionDate) return true;
+        const compDate = parseDateSafe(x.completionDate);
+        return compDate && compDate >= startLimit;
+      });
+    }
   }
   if (filters.completionDateEnd) {
-    filtered = filtered.filter(x => !x.completionDate || x.completionDate <= filters.completionDateEnd);
+    const endLimit = parseDateSafe(filters.completionDateEnd);
+    if (endLimit) {
+      filtered = filtered.filter(x => {
+        if (!x.completionDate) return true;
+        const compDate = parseDateSafe(x.completionDate);
+        return compDate && compDate <= endLimit;
+      });
+    }
   }
 
   return filtered;
