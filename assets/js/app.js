@@ -3062,39 +3062,30 @@ const ReportsPage = {
       };
     }
 
-    // Toggle Collapse for Column Customization Section
+    // ===== COLUMN CUSTOMIZER COLLAPSIBLE PANEL =====
     const toggleRow = document.getElementById('column-selection-toggle-row');
-    const chkGrid = document.getElementById('columns-checkboxes-grid');
-    const actionsArea = document.getElementById('column-selection-actions');
-    const toggleIcon = document.getElementById('col-toggle-icon');
 
-    if (toggleRow && chkGrid) {
-      // Collapsed by default
-      chkGrid.style.display = 'none';
-      if (actionsArea) {
-        actionsArea.style.opacity = '0';
-        actionsArea.style.pointerEvents = 'none';
-      }
-      if (toggleIcon) toggleIcon.style.transform = 'rotate(-90deg)';
+    if (toggleRow) {
+      // Restore session state (default: expanded = true)
+      const savedState = sessionStorage.getItem('pgp_reports_columns_expanded');
+      const startExpanded = savedState === null ? true : savedState === 'true';
 
-      toggleRow.onclick = (e) => {
-        const isCollapsed = chkGrid.style.display === 'none';
-        if (isCollapsed) {
-          chkGrid.style.display = 'grid';
-          if (actionsArea) {
-            actionsArea.style.opacity = '1';
-            actionsArea.style.pointerEvents = 'auto';
-          }
-          if (toggleIcon) toggleIcon.style.transform = 'rotate(0deg)';
-        } else {
-          chkGrid.style.display = 'none';
-          if (actionsArea) {
-            actionsArea.style.opacity = '0';
-            actionsArea.style.pointerEvents = 'none';
-          }
-          if (toggleIcon) toggleIcon.style.transform = 'rotate(-90deg)';
+      // Apply initial state without animation (instant)
+      this._applyCollapseState(startExpanded, false);
+
+      // Click on header row
+      toggleRow.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleColumnCustomizer();
+      });
+
+      // Keyboard: Enter / Space
+      toggleRow.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          this.toggleColumnCustomizer();
         }
-      };
+      });
     }
 
     // Individual report card handlers
@@ -3257,6 +3248,51 @@ const ReportsPage = {
   saveColumnSelection(storageKey) {
     const checkedValues = Array.from(document.querySelectorAll('.column-toggle-chk:checked')).map(chk => chk.value);
     localStorage.setItem(storageKey, JSON.stringify(checkedValues));
+  },
+
+  toggleColumnCustomizer() {
+    const header = document.getElementById('column-selection-toggle-row');
+    if (!header) return;
+    const isExpanded = header.getAttribute('aria-expanded') === 'true';
+    this._applyCollapseState(!isExpanded, true);
+  },
+
+  _applyCollapseState(expanded, animate) {
+    const header = document.getElementById('column-selection-toggle-row');
+    const body = document.getElementById('col-customizer-body');
+    const icon = document.getElementById('col-toggle-icon');
+    const text = document.getElementById('col-toggle-text');
+
+    if (!header || !body) return;
+
+    // Temporarily disable transition for instant initial state
+    if (!animate) {
+      body.style.transition = 'none';
+      icon && (icon.style.transition = 'none');
+      // Re-enable on next frame
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          body.style.transition = '';
+          if (icon) icon.style.transition = '';
+        });
+      });
+    }
+
+    if (expanded) {
+      body.classList.add('col-customizer-body--open');
+      header.classList.add('col-customizer-header--open');
+      header.setAttribute('aria-expanded', 'true');
+      if (icon) icon.style.transform = 'rotate(0deg)';
+      if (text) text.textContent = 'Collapse';
+      sessionStorage.setItem('pgp_reports_columns_expanded', 'true');
+    } else {
+      body.classList.remove('col-customizer-body--open');
+      header.classList.remove('col-customizer-header--open');
+      header.setAttribute('aria-expanded', 'false');
+      if (icon) icon.style.transform = 'rotate(180deg)';
+      if (text) text.textContent = 'Expand';
+      sessionStorage.setItem('pgp_reports_columns_expanded', 'false');
+    }
   },
 
   bindChangeListeners() {

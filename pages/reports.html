@@ -9,11 +9,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <link rel="stylesheet" href="../assets/css/main.css?v=2.0">
-  <link rel="stylesheet" href="../assets/css/sidebar.css?v=2.0">
-  <link rel="stylesheet" href="../assets/css/components.css?v=2.0">
-  <link rel="stylesheet" href="../assets/css/dashboard.css?v=2.0">
-  <link rel="stylesheet" href="../assets/css/responsive.css?v=2.0">
+  <link rel="stylesheet" href="../assets/css/main.css?v=3.0">
+  <link rel="stylesheet" href="../assets/css/sidebar.css?v=3.0">
+  <link rel="stylesheet" href="../assets/css/components.css?v=3.0">
+  <link rel="stylesheet" href="../assets/css/dashboard.css?v=3.0">
+  <link rel="stylesheet" href="../assets/css/responsive.css?v=3.0">
 </head>
 
 <body>
@@ -164,20 +164,51 @@
                 </div>
               </div>
 
-              <!-- Column Customization Card -->
-              <div id="column-selection-card" class="form-group" style="display: none; margin-bottom: var(--space-4);">
-                <div class="d-flex justify-between align-center mb-3" id="column-selection-toggle-row" style="cursor: pointer; user-select: none;">
-                  <label class="form-label mb-0 d-flex align-center gap-2" style="cursor: pointer; margin-bottom: 0;">
-                    <i class="fas fa-chevron-down" id="col-toggle-icon" style="transition: transform 0.2s ease;"></i>
-                    <span>Customize Export Columns</span>
-                  </label>
-                  <div class="d-flex gap-2" id="column-selection-actions" style="transition: opacity 0.2s ease;">
-                    <button type="button" id="cols-select-all" class="btn-secondary-custom btn-xs" style="padding: 4px 8px; font-size: 11px;">Select All</button>
-                    <button type="button" id="cols-clear-all" class="btn-secondary-custom btn-xs" style="padding: 4px 8px; font-size: 11px;">Clear All</button>
+              <!-- Column Customization Card — Collapsible Panel -->
+              <div id="column-selection-card" style="display: none; margin-bottom: var(--space-4);">
+                <!-- Panel Header -->
+                <div class="col-customizer-header" id="column-selection-toggle-row" role="button" tabindex="0"
+                  aria-expanded="true" aria-controls="col-customizer-body">
+                  <div class="col-customizer-header-left">
+                    <div class="col-customizer-icon">
+                      <i class="fas fa-table-columns"></i>
+                    </div>
+                    <div>
+                      <div class="col-customizer-title">Customize Export Columns</div>
+                      <div class="col-customizer-subtitle">Choose which columns to include in the exported report file.
+                      </div>
+                    </div>
                   </div>
+                  <button type="button" id="col-customizer-toggle-btn" class="col-customizer-toggle-btn"
+                    aria-label="Toggle column customizer" tabindex="-1">
+                    <span id="col-toggle-text">Collapse</span>
+                    <i class="fas fa-chevron-up" id="col-toggle-icon"></i>
+                  </button>
                 </div>
-                <div id="columns-checkboxes-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; padding: var(--space-4); background: var(--bg-hover); border: 1px solid var(--border-subtle); border-radius: var(--radius-md);">
-                  <!-- Checkboxes dynamically rendered -->
+
+                <!-- Animated Body Wrapper -->
+                <div id="col-customizer-body" class="col-customizer-body col-customizer-body--open">
+                  <div class="col-customizer-body-inner">
+                    <!-- Actions Row -->
+                    <div class="col-customizer-actions" id="column-selection-actions">
+                      <span class="col-customizer-hint"><i class="fas fa-info-circle"></i> Select the columns you want
+                        in the exported file.</span>
+                      <div class="d-flex gap-2">
+                        <button type="button" id="cols-select-all" class="btn-secondary-custom"
+                          style="padding: 5px 12px; font-size: 11px; height: 28px;">
+                          <i class="fas fa-check-double" style="font-size: 10px;"></i> Select All
+                        </button>
+                        <button type="button" id="cols-clear-all" class="btn-secondary-custom"
+                          style="padding: 5px 12px; font-size: 11px; height: 28px;">
+                          <i class="fas fa-times" style="font-size: 10px;"></i> Clear All
+                        </button>
+                      </div>
+                    </div>
+                    <!-- Checkboxes Grid -->
+                    <div id="columns-checkboxes-grid" class="col-customizer-grid">
+                      <!-- Checkboxes dynamically rendered -->
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -455,12 +486,12 @@
   </div>
 
   <!-- Scripts -->
-  <script src="../assets/js/theme.js?v=2.0"></script>
-  <script src="../assets/js/sidebar.js?v=2.0"></script>
-  <script src="../assets/js/toast.js?v=2.0"></script>
-  <script src="../assets/js/modal.js?v=2.0"></script>
-  <script src="../assets/js/table.js?v=2.0"></script>
-  <script src="../assets/js/app.js?v=2.0"></script>
+  <script src="../assets/js/theme.js?v=3.0"></script>
+  <script src="../assets/js/sidebar.js?v=3.0"></script>
+  <script src="../assets/js/toast.js?v=3.0"></script>
+  <script src="../assets/js/modal.js?v=3.0"></script>
+  <script src="../assets/js/table.js?v=3.0"></script>
+  <script src="../assets/js/app.js?v=3.0"></script>
   <script>
     // Populate location dropdown dynamically from live data
     document.addEventListener('DOMContentLoaded', () => {
