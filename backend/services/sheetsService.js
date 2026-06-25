@@ -58,8 +58,8 @@ const dataCache = {
   users:     { data: null, ts: 0, isRefreshing: false },
   audit:     { data: null, ts: 0, isRefreshing: false },
   TTL: {
-    active:    300 * 1000,       // 5 minutes
-    completed: 300 * 1000,       // 5 minutes
+    active:    30 * 1000,        // 30 seconds
+    completed: 30 * 1000,        // 30 seconds
     users:     300 * 1000,       // 5 minutes
     audit:     60 * 1000         // 60 seconds
   }

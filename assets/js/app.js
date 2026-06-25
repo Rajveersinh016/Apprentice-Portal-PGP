@@ -77,6 +77,115 @@ function debounce(fn, delay) {
   };
 }
 
+// ============================================================
+// LOCATIONS CACHE — Dynamic location list from backend
+// Fetched once per session via /api/locations, which reads
+// unique Location values from the live Google Sheets data.
+// ============================================================
+const LocationsCache = {
+  _locations: null,
+  _promise: null,
+
+  // Load locations from backend (called during AppDB.init)
+  async load() {
+    if (this._locations !== null) return; // already loaded
+    if (this._promise) return this._promise; // deduplicate concurrent calls
+
+    this._promise = (async () => {
+      try {
+        const backendUrl = AppDB.getBackendUrl();
+        const response = await fetch(`${backendUrl}/api/locations`, {
+          headers: AppDB.apiHeaders()
+        });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const data = await response.json();
+        if (data.success && Array.isArray(data.locations)) {
+          this._locations = data.locations;
+        } else {
+          throw new Error(data.error || 'Locations fetch failed');
+        }
+      } catch (err) {
+        console.warn('LocationsCache: Failed to load — using fallback from data.', err.message);
+        // Fallback: derive unique locations from already-cached apprentice data
+        const list = AppDB.getApprentices();
+        const set = new Set();
+        list.forEach(x => { if (x.location) set.add(String(x.location).trim()); });
+        this._locations = Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+      }
+      this._promise = null;
+    })();
+
+    return this._promise;
+  },
+
+  // Synchronous getter — returns cached array ([] if not yet loaded)
+  get() {
+    return this._locations || [];
+  },
+
+  // Invalidate so next load() re-fetches (call after data upload)
+  invalidate() {
+    this._locations = null;
+    this._promise = null;
+  }
+};
+
+// ============================================================
+// DEPARTMENTS CACHE — Dynamic department list from backend
+// Fetched once per session via /api/departments, which reads
+// unique Department values from the live Google Sheets data.
+// ============================================================
+const DepartmentsCache = {
+  _departments: null,
+  _promise: null,
+
+  // Load departments from backend (called during AppDB.init)
+  async load() {
+    if (this._departments !== null) return; // already loaded
+    if (this._promise) return this._promise; // deduplicate concurrent calls
+
+    this._promise = (async () => {
+      try {
+        const backendUrl = AppDB.getBackendUrl();
+        const response = await fetch(`${backendUrl}/api/departments`, {
+          headers: AppDB.apiHeaders()
+        });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const data = await response.json();
+        if (data.success && Array.isArray(data.departments)) {
+          this._departments = data.departments;
+        } else {
+          throw new Error(data.error || 'Departments fetch failed');
+        }
+      } catch (err) {
+        console.warn('DepartmentsCache: Failed to load — using fallback from data.', err.message);
+        // Fallback: derive unique departments from already-cached apprentice data
+        const list = AppDB.getApprentices();
+        const set = new Set();
+        list.forEach(x => {
+          const d = (x.dept || x.department || '').trim();
+          if (d) set.add(d);
+        });
+        this._departments = Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+      }
+      this._promise = null;
+    })();
+
+    return this._promise;
+  },
+
+  // Synchronous getter — returns cached array ([] if not yet loaded)
+  get() {
+    return this._departments || [];
+  },
+
+  // Invalidate so next load() re-fetches (call after data upload)
+  invalidate() {
+    this._departments = null;
+    this._promise = null;
+  }
+};
+
 const AppDB = {
   isLive: false,
 
@@ -92,6 +201,12 @@ const AppDB = {
   invalidateCache() {
     this._cache.data = null;
     this._cache.ts = 0;
+    if (typeof LocationsCache !== 'undefined') {
+      LocationsCache.invalidate();
+    }
+    if (typeof DepartmentsCache !== 'undefined') {
+      DepartmentsCache.invalidate();
+    }
   },
 
   // ── Helper: read stored JWT token
@@ -128,7 +243,14 @@ const AppDB = {
 
     // Serve from in-memory cache if still valid (avoids redundant API calls
     // when multiple page components call init() within the TTL window)
-    if (this.isCacheValid()) return;
+    if (this.isCacheValid()) {
+      // Ensure locations and departments are loaded even when data cache hits
+      await Promise.all([
+        LocationsCache.load(),
+        DepartmentsCache.load()
+      ]);
+      return;
+    }
 
     try {
       // console.log('AppDB: Fetching live data from Express backend...');
@@ -144,7 +266,11 @@ const AppDB = {
         this._cache.ts = Date.now();
         localStorage.setItem('pref_sheets_sync', 'true');
         this.isLive = true;
-        // console.log(`AppDB: Cached ${this._cache.data.length} live records (TTL 30s).`);
+        // Load locations and departments in parallel after data is cached
+        await Promise.all([
+          LocationsCache.load(),
+          DepartmentsCache.load()
+        ]);
         return;
       } else {
         throw new Error(resData.error || 'Backend error');
@@ -202,8 +328,10 @@ const AppDB = {
     localStorage.setItem('pgp_role', role);
     if (role === 'Branch HR') {
       const activeBranch = localStorage.getItem('pgp_branch');
-      if (activeBranch === 'All Locations') {
-        localStorage.setItem('pgp_branch', 'Kosamba');
+      if (!activeBranch || activeBranch === 'All Locations') {
+        // Use first available location from dynamic cache, or leave unset for login flow
+        const firstLoc = LocationsCache.get()[0] || '';
+        if (firstLoc) localStorage.setItem('pgp_branch', firstLoc);
       }
     } else {
       localStorage.setItem('pgp_branch', 'All Locations');
@@ -411,7 +539,8 @@ const AppShell = {
 
     let branchSelectorHtml = '';
     if (currentRole === 'Super HR') {
-      const branches = ['All Locations', 'Kosamba', 'Jambusar', 'Halol', 'Vadodara'];
+      // Dynamic locations: 'All Locations' + whatever exists in the live data
+      const branches = ['All Locations', ...LocationsCache.get()];
       let optionsHtml = '';
       branches.forEach(b => {
         optionsHtml += `<option value="${b}" ${currentBranch === b ? 'selected' : ''}>${b}</option>`;
@@ -1110,7 +1239,8 @@ const DashboardPage = {
     const role = AppDB.getRole();
     const activeBranch = AppDB.getBranch();
 
-    let locations = ['Kosamba', 'Jambusar', 'Halol', 'Vadodara'];
+    // Dynamic locations: derived from live data via LocationsCache
+    let locations = LocationsCache.get().length > 0 ? LocationsCache.get() : [...new Set(list.map(x => x.location).filter(Boolean))].sort();
     if (role === 'Branch HR') {
       locations = [activeBranch];
     } else if (activeBranch !== 'All Locations') {
@@ -1141,8 +1271,8 @@ const DashboardPage = {
     const role = AppDB.getRole();
     const activeBranch = AppDB.getBranch();
 
-    // Chart 1: Active Apprentices by Location
-    let locations = ['Kosamba', 'Jambusar', 'Halol', 'Vadodara'];
+    // Chart 1: Active Apprentices by Location — dynamic
+    let locations = LocationsCache.get().length > 0 ? LocationsCache.get() : [...new Set(list.map(x => x.location).filter(Boolean))].sort();
     if (role === 'Branch HR') {
       locations = [activeBranch];
     } else if (activeBranch !== 'All Locations') {
@@ -1257,6 +1387,7 @@ const ApprenticesPage = {
     sessionStorage.setItem('pgp_registry_tab', this.pageType);
 
     this.loadData();
+    this.populateDepartmentsDropdown();
     this.bindFilters();
     this.applySessionFilters();
 
@@ -1323,6 +1454,7 @@ const ApprenticesPage = {
 
     apprenticesApprenticesUpdatedListener = () => {
       this.loadData();
+      this.populateDepartmentsDropdown();
       this.applySessionFilters();
       this.render();
     };
@@ -1391,6 +1523,21 @@ const ApprenticesPage = {
     this.sortBy = sessionStorage.getItem(`pgp_${this.pageType}_sort_by`) || 'code';
     this.sortAsc = sessionStorage.getItem(`pgp_${this.pageType}_sort_asc`) !== 'false';
     this.sortData();
+  },
+
+  populateDepartmentsDropdown() {
+    const deptSelect = document.getElementById('filter-dept');
+    if (!deptSelect) return;
+    const list = DepartmentsCache.get();
+    const currentVal = deptSelect.value;
+    let html = '<option value="">All Departments</option>';
+    list.forEach(d => {
+      html += `<option value="${d}">${d}</option>`;
+    });
+    deptSelect.innerHTML = html;
+    if (currentVal && list.includes(currentVal)) {
+      deptSelect.value = currentVal;
+    }
   },
 
   loadData() {
@@ -2489,24 +2636,17 @@ const AnalyticsPage = {
     const deptSelect = document.getElementById('analytics-filter-dept');
     if (!deptSelect) return;
 
-    const allData = AppDB.getApprentices();
-    const depts = new Set();
-    allData.forEach(x => {
-      const d = (x.dept || x.department || '').trim();
-      if (d) depts.add(d);
-    });
-
-    const sortedDepts = Array.from(depts).sort();
+    const list = DepartmentsCache.get();
     const currentVal = deptSelect.value;
 
     let html = '<option value="All">All Departments</option>';
-    sortedDepts.forEach(d => {
+    list.forEach(d => {
       html += `<option value="${d}">${d}</option>`;
     });
 
     deptSelect.innerHTML = html;
 
-    if (sortedDepts.includes(currentVal)) {
+    if (list.includes(currentVal)) {
       deptSelect.value = currentVal;
     }
   },
@@ -2668,8 +2808,8 @@ const AnalyticsPage = {
   },
 
   renderSummaryCharts(list) {
-    // A. Location Comparison
-    const locations = ['Kosamba', 'Jambusar', 'Halol', 'Vadodara'];
+    // A. Location Comparison — dynamic
+    const locations = LocationsCache.get().length > 0 ? LocationsCache.get() : [...new Set(list.map(x => (x.location || '').trim()).filter(Boolean))].sort();
     const locCounts = locations.map(loc => list.filter(x => String(x.location || '').toLowerCase().trim() === loc.toLowerCase().trim()).length);
     if (!Charts.updateChart('summary-chart-location', locations, locCounts)) {
       Charts.createBarChart('summary-chart-location', locations, locCounts, 'Total Apprentices');
@@ -2752,8 +2892,8 @@ const AnalyticsPage = {
       Charts.createBarChart('demo-chart-age', ageLabels, ageCounts, 'Apprentices', ChartPalette.violet);
     }
 
-    // C. Location Breakdown
-    const locations = ['Kosamba', 'Jambusar', 'Halol', 'Vadodara'];
+    // C. Location Breakdown — dynamic
+    const locations = LocationsCache.get().length > 0 ? LocationsCache.get() : [...new Set(list.map(x => (x.location || '').trim()).filter(Boolean))].sort();
     const locCounts = locations.map(loc => list.filter(x => String(x.location || '').toLowerCase().trim() === loc.toLowerCase().trim()).length);
     if (!Charts.updateChart('demo-chart-location', locations, locCounts)) {
       Charts.createBarChart('demo-chart-location', locations, locCounts, 'Total Apprentices', ChartPalette.success);
@@ -2856,6 +2996,7 @@ const ReportsPage = {
       }
     }
 
+    this.populateDepartmentsDropdown();
     this.restoreFilters();
     this.bindChangeListeners();
 
@@ -2894,6 +3035,7 @@ const ReportsPage = {
     if (selectAllBtn) {
       selectAllBtn.onclick = (e) => {
         e.preventDefault();
+        e.stopPropagation();
         const chks = document.querySelectorAll('.column-toggle-chk');
         chks.forEach(chk => chk.checked = true);
         const typeSelect = document.getElementById('report-filter-type');
@@ -2909,12 +3051,48 @@ const ReportsPage = {
     if (clearAllBtn) {
       clearAllBtn.onclick = (e) => {
         e.preventDefault();
+        e.stopPropagation();
         const chks = document.querySelectorAll('.column-toggle-chk');
         chks.forEach(chk => chk.checked = false);
         const typeSelect = document.getElementById('report-filter-type');
         if (typeSelect) {
           const storageKey = this.getStorageKeyForType(typeSelect.value);
           if (storageKey) this.saveColumnSelection(storageKey);
+        }
+      };
+    }
+
+    // Toggle Collapse for Column Customization Section
+    const toggleRow = document.getElementById('column-selection-toggle-row');
+    const chkGrid = document.getElementById('columns-checkboxes-grid');
+    const actionsArea = document.getElementById('column-selection-actions');
+    const toggleIcon = document.getElementById('col-toggle-icon');
+
+    if (toggleRow && chkGrid) {
+      // Collapsed by default
+      chkGrid.style.display = 'none';
+      if (actionsArea) {
+        actionsArea.style.opacity = '0';
+        actionsArea.style.pointerEvents = 'none';
+      }
+      if (toggleIcon) toggleIcon.style.transform = 'rotate(-90deg)';
+
+      toggleRow.onclick = (e) => {
+        const isCollapsed = chkGrid.style.display === 'none';
+        if (isCollapsed) {
+          chkGrid.style.display = 'grid';
+          if (actionsArea) {
+            actionsArea.style.opacity = '1';
+            actionsArea.style.pointerEvents = 'auto';
+          }
+          if (toggleIcon) toggleIcon.style.transform = 'rotate(0deg)';
+        } else {
+          chkGrid.style.display = 'none';
+          if (actionsArea) {
+            actionsArea.style.opacity = '0';
+            actionsArea.style.pointerEvents = 'none';
+          }
+          if (toggleIcon) toggleIcon.style.transform = 'rotate(-90deg)';
         }
       };
     }
@@ -2951,6 +3129,21 @@ const ReportsPage = {
         };
       }
     });
+  },
+
+  populateDepartmentsDropdown() {
+    const deptSelect = document.getElementById('report-filter-dept');
+    if (!deptSelect) return;
+    const list = DepartmentsCache.get();
+    const currentVal = deptSelect.value;
+    let html = '<option value="All">All Departments</option>';
+    list.forEach(d => {
+      html += `<option value="${d}">${d}</option>`;
+    });
+    deptSelect.innerHTML = html;
+    if (currentVal && (currentVal === 'All' || list.includes(currentVal))) {
+      deptSelect.value = currentVal;
+    }
   },
 
   getCurrentFilters(reportType) {
@@ -3970,6 +4163,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const initComplete = Date.now();
       sessionStorage.setItem('pgp_perf_dom_to_init', (initComplete - initStart).toString());
       sessionStorage.setItem('pgp_perf_init_to_render', '0');
+      AppShell.renderTopNav();
       printNavigationPerformanceReport();
       hideGlobalLoader();
     }).catch(() => {
@@ -3983,6 +4177,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       sessionStorage.setItem('pgp_perf_dom_to_init', (initComplete - initStart).toString());
 
       const renderStart = Date.now();
+      AppShell.renderTopNav();
 
       // Hide skeletons and render real data
       if (path.includes('dashboard.html')) {

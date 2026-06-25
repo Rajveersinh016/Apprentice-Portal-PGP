@@ -124,10 +124,7 @@
               <label class="form-label" style="font-weight: 600; font-size: 12px; margin-bottom: 6px; display: block; color: var(--text-primary);">Location</label>
               <select id="analytics-filter-location" class="form-control-custom select-custom">
                 <option value="All Locations">All Locations</option>
-                <option value="Kosamba">Kosamba</option>
-                <option value="Jambusar">Jambusar</option>
-                <option value="Halol">Halol</option>
-                <option value="Vadodara">Vadodara</option>
+                <!-- Populated dynamically on load from /api/locations -->
               </select>
             </div>
             
@@ -378,6 +375,36 @@
           <div class="empty-state-description">Only Super HR accounts are permitted to review executive company-wide analytics.</div>
         </div>
       `;
+      return;
+    }
+
+    // Dynamically populate analytics location filter from /api/locations
+    function populateAnalyticsLocations(locations) {
+      const sel = document.getElementById('analytics-filter-location');
+      if (!sel) return;
+      sel.innerHTML = '<option value="All Locations">All Locations</option>';
+      locations.forEach(loc => {
+        const opt = document.createElement('option');
+        opt.value = loc;
+        opt.textContent = loc;
+        sel.appendChild(opt);
+      });
+    }
+
+    // Try LocationsCache first (loaded by AppDB.init which runs with app.js)
+    const cached = LocationsCache.get();
+    if (cached.length > 0) {
+      populateAnalyticsLocations(cached);
+    } else {
+      const backendUrl = AppDB.getBackendUrl();
+      fetch(`${backendUrl}/api/locations`, { headers: AppDB.apiHeaders() })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success && Array.isArray(data.locations)) {
+            populateAnalyticsLocations(data.locations);
+          }
+        })
+        .catch(err => console.warn('Analytics: Could not load locations', err));
     }
   });
 </script>

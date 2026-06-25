@@ -7,6 +7,8 @@ const authRoutes = require('./routes/auth');
 const apprenticeRoutes = require('./routes/apprentices');
 const uploadRoutes = require('./routes/upload');
 const usersRoutes = require('./routes/users');
+const locationsRoutes = require('./routes/locations');
+const departmentsRoutes = require('./routes/departments');
 const sheetsService = require('./services/sheetsService');
 const { uploadRateLimiter, exportRateLimiter } = require('./middleware/rateLimiter');
 
@@ -123,6 +125,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/apprentices', apprenticeRoutes);
 app.use('/api/upload', uploadRateLimiter, uploadRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/locations', locationsRoutes);
+app.use('/api/departments', departmentsRoutes);
 app.use('/api/reports', exportRateLimiter, require('./routes/reports'));
 
 // ============================================================

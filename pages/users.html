@@ -97,10 +97,7 @@
         <div class="form-group" id="add-user-location-group">
           <label class="form-label" for="user-location">Branch Assignment <span class="required">*</span></label>
           <select class="form-control-custom form-select-custom" id="user-location">
-            <option value="Kosamba">Kosamba Factory</option>
-            <option value="Halol">Halol Factory</option>
-            <option value="Jambusar">Jambusar Center</option>
-            <option value="Vadodara">Vadodara Center</option>
+            <option value="" disabled>Loading locations...</option>
           </select>
         </div>
 
@@ -155,10 +152,7 @@
         <div class="form-group" id="edit-user-location-group">
           <label class="form-label" for="edit-user-location">Branch Assignment <span class="required">*</span></label>
           <select class="form-control-custom form-select-custom" id="edit-user-location">
-            <option value="Kosamba">Kosamba Factory</option>
-            <option value="Halol">Halol Factory</option>
-            <option value="Jambusar">Jambusar Center</option>
-            <option value="Vadodara">Vadodara Center</option>
+            <option value="" disabled>Loading locations...</option>
           </select>
         </div>
 
@@ -199,6 +193,48 @@
           <div class="empty-state-description">Only Super HR accounts are permitted to configure administrative permissions.</div>
         </div>
       `;
+      return;
+    }
+
+    // Dynamically populate location dropdowns from /api/locations
+    function populateLocationSelects(locations) {
+      const selects = ['user-location', 'edit-user-location'];
+      selects.forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        sel.innerHTML = '';
+        locations.forEach(loc => {
+          const opt = document.createElement('option');
+          opt.value = loc;
+          opt.textContent = loc;
+          sel.appendChild(opt);
+        });
+      });
+    }
+
+    // Try LocationsCache first (already loaded by AppDB.init)
+    const cached = LocationsCache.get();
+    if (cached.length > 0) {
+      populateLocationSelects(cached);
+    } else {
+      // Fallback: fetch directly
+      const backendUrl = AppDB.getBackendUrl();
+      fetch(`${backendUrl}/api/locations`, { headers: AppDB.apiHeaders() })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success && Array.isArray(data.locations)) {
+            populateLocationSelects(data.locations);
+          }
+        })
+        .catch(err => {
+          console.warn('Users page: Could not load locations', err);
+          // Fallback to commonly known locations
+          const selects = ['user-location', 'edit-user-location'];
+          selects.forEach(id => {
+            const sel = document.getElementById(id);
+            if (sel) sel.innerHTML = '<option value="" disabled>Unable to load locations</option>';
+          });
+        });
     }
   });
 

@@ -89,10 +89,7 @@
                   <label class="form-label" for="report-filter-location">Location Scope</label>
                   <select class="form-control-custom form-select-custom" id="report-filter-location">
                     <option value="All Locations">All Locations</option>
-                    <option value="Kosamba">Kosamba Factory</option>
-                    <option value="Halol">Halol Factory</option>
-                    <option value="Jambusar">Jambusar Center</option>
-                    <option value="Vadodara">Vadodara Center</option>
+                    <!-- Populated dynamically on load from /api/locations -->
                   </select>
                 </div>
 
@@ -101,12 +98,6 @@
                   <label class="form-label" for="report-filter-dept">Department</label>
                   <select class="form-control-custom form-select-custom" id="report-filter-dept">
                     <option value="All">All Departments</option>
-                    <option value="Production">Production</option>
-                    <option value="Maintenance">Maintenance</option>
-                    <option value="Quality Assurance">Quality Assurance</option>
-                    <option value="Logistics">Logistics</option>
-                    <option value="Engineering">Engineering</option>
-                    <option value="HR">HR</option>
                   </select>
                 </div>
               </div>
@@ -175,13 +166,16 @@
 
               <!-- Column Customization Card -->
               <div id="column-selection-card" class="form-group" style="display: none; margin-bottom: var(--space-4);">
-                <label class="form-label d-flex justify-between align-center mb-3">
-                  <span>Customize Export Columns</span>
-                  <div class="d-flex gap-2">
+                <div class="d-flex justify-between align-center mb-3" id="column-selection-toggle-row" style="cursor: pointer; user-select: none;">
+                  <label class="form-label mb-0 d-flex align-center gap-2" style="cursor: pointer; margin-bottom: 0;">
+                    <i class="fas fa-chevron-down" id="col-toggle-icon" style="transition: transform 0.2s ease;"></i>
+                    <span>Customize Export Columns</span>
+                  </label>
+                  <div class="d-flex gap-2" id="column-selection-actions" style="transition: opacity 0.2s ease;">
                     <button type="button" id="cols-select-all" class="btn-secondary-custom btn-xs" style="padding: 4px 8px; font-size: 11px;">Select All</button>
                     <button type="button" id="cols-clear-all" class="btn-secondary-custom btn-xs" style="padding: 4px 8px; font-size: 11px;">Clear All</button>
                   </div>
-                </label>
+                </div>
                 <div id="columns-checkboxes-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; padding: var(--space-4); background: var(--bg-hover); border: 1px solid var(--border-subtle); border-radius: var(--radius-md);">
                   <!-- Checkboxes dynamically rendered -->
                 </div>
@@ -467,6 +461,52 @@
   <script src="../assets/js/modal.js?v=2.0"></script>
   <script src="../assets/js/table.js?v=2.0"></script>
   <script src="../assets/js/app.js?v=2.0"></script>
+  <script>
+    // Populate location dropdown dynamically from live data
+    document.addEventListener('DOMContentLoaded', () => {
+      function populateReportLocations(locations) {
+        const sel = document.getElementById('report-filter-location');
+        if (!sel) return;
+        // Keep the 'All Locations' option, then append dynamic locations
+        sel.innerHTML = '<option value="All Locations">All Locations</option>';
+        locations.forEach(loc => {
+          const opt = document.createElement('option');
+          opt.value = loc;
+          opt.textContent = loc;
+          sel.appendChild(opt);
+        });
+      }
+
+      // Branch HR only sees their own location
+      const role = AppDB.getRole();
+      const branch = AppDB.getBranch();
+      if (role === 'Branch HR') {
+        const sel = document.getElementById('report-filter-location');
+        const locGroup = document.getElementById('report-loc-group');
+        if (sel) {
+          sel.innerHTML = `<option value="${branch}">${branch}</option>`;
+          sel.disabled = true;
+        }
+        return;
+      }
+
+      // Try LocationsCache first
+      const cached = LocationsCache.get();
+      if (cached.length > 0) {
+        populateReportLocations(cached);
+      } else {
+        const backendUrl = AppDB.getBackendUrl();
+        fetch(`${backendUrl}/api/locations`, { headers: AppDB.apiHeaders() })
+          .then(r => r.json())
+          .then(data => {
+            if (data.success && Array.isArray(data.locations)) {
+              populateReportLocations(data.locations);
+            }
+          })
+          .catch(err => console.warn('Reports: Could not load locations', err));
+      }
+    });
+  </script>
 </body>
 
 </html>

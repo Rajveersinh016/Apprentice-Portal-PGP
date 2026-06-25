@@ -59,15 +59,31 @@ router.post('/', authMiddleware, superHrOnly, async (req, res) => {
     return res.status(400).json({ success: false, error: 'Invalid role. Valid roles are "Super HR" and "Branch HR".' });
   }
 
-  // Location validation
-  const validBranches = ['Kosamba', 'Jambusar', 'Halol', 'Vadodara'];
+  // Location validation — dynamic: valid branches are derived from actual apprentice data
   let userLocation = location;
   if (role === 'Super HR') {
     userLocation = 'All Locations';
   } else {
-    if (!location || !validBranches.includes(location)) {
-      return res.status(400).json({ success: false, error: 'Branch HR must be assigned to a valid branch (Kosamba, Jambusar, Halol, Vadodara).' });
+    if (!location || !location.trim()) {
+      return res.status(400).json({ success: false, error: 'Branch HR must be assigned to a valid branch location.' });
     }
+    // Derive valid branches from live data (cache-warm — no extra API call)
+    try {
+      const activeRaw = await sheetsService.getActiveApprentices();
+      const completedRaw = await sheetsService.getCompletedApprentices();
+      const locationSet = new Set();
+      [...activeRaw, ...completedRaw].forEach(row => {
+        const loc = String(row['Location'] || '').trim();
+        if (loc) locationSet.add(loc.toLowerCase());
+      });
+      if (!locationSet.has(location.trim().toLowerCase())) {
+        return res.status(400).json({ success: false, error: `Invalid branch location: "${location}". Only locations present in the apprentice data are valid.` });
+      }
+    } catch (locErr) {
+      console.warn('Could not validate location dynamically, skipping check:', locErr.message);
+      // Non-fatal: allow creation if location check fails (service might be warming up)
+    }
+    userLocation = location.trim();
   }
 
   try {
@@ -154,9 +170,22 @@ router.put('/:id', authMiddleware, superHrOnly, async (req, res) => {
     return res.status(400).json({ success: false, error: 'Invalid role. Valid roles are "Super HR" and "Branch HR".' });
   }
 
-  const validBranches = ['Kosamba', 'Jambusar', 'Halol', 'Vadodara'];
-  if (role === 'Branch HR' && location && !validBranches.includes(location)) {
-    return res.status(400).json({ success: false, error: 'Branch HR must be assigned to a valid branch (Kosamba, Jambusar, Halol, Vadodara).' });
+  // Dynamic location validation for edit — derive from live data
+  if (role === 'Branch HR' && location) {
+    try {
+      const activeRaw = await sheetsService.getActiveApprentices();
+      const completedRaw = await sheetsService.getCompletedApprentices();
+      const locationSet = new Set();
+      [...activeRaw, ...completedRaw].forEach(row => {
+        const loc = String(row['Location'] || '').trim();
+        if (loc) locationSet.add(loc.toLowerCase());
+      });
+      if (!locationSet.has(location.trim().toLowerCase())) {
+        return res.status(400).json({ success: false, error: `Invalid branch location: "${location}". Only locations present in the apprentice data are valid.` });
+      }
+    } catch (locErr) {
+      console.warn('Could not validate location dynamically on edit, skipping check:', locErr.message);
+    }
   }
 
   try {
