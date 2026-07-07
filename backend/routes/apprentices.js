@@ -5,44 +5,7 @@ const authMiddleware = require('../middleware/auth');
 
 const analyticsCache = require('../services/analyticsCache');
 
-// Mapping helper (exact copy of front-end mapper for server-side normalization)
-function mapSheetToInternal(row, isCompleted) {
-  const mapped = {
-    code: row["Employee Code"] || "",
-    name: row["Full Name"] || "",
-    location: row["Location"] || "",
-    dept: row["Department"] || "",
-    joined: row["Joining Date"] ? String(row["Joining Date"]).split("T")[0] : "",
-    sex: row["Sex"] || "Male",
-    age: row["Age"] ? parseInt(row["Age"]) : 22,
-    phone: row["Phone"] || "",
-    email: row["Email"] || "",
-    address: row["Address"] || "",
-    remarks: row["Remarks"] || "",
-    contractId: row["Employee Contract ID"] || "Pending",
-    portalEnrollmentNumber: row["Portal Enrollment Number"] || "Pending",
-    portalName: row["Portal Name"] || "Pending",
-    status: isCompleted ? "Completed" : (row["Record Status"] || "Active"),
-    completionDate: isCompleted ? (row["Completion Date"] ? String(row["Completion Date"]).split("T")[0] : "") : "",
-    completedBy: isCompleted ? (row["Completed By"] || "") : "",
-    completionReason: isCompleted ? (row["Completion Reason"] || "") : "",
-    otherCompletionReason: isCompleted ? (row["Other Completion Reason"] || "") : "",
-    completionRemarks: isCompleted ? (row["Completion Remarks"] || "") : "",
-    updatedBy: row["Updated By"] || "",
-    updatedDate: row["Updated Date"] || ""
-  };
-
-  // Dynamically attach any other fields from the spreadsheet row
-  Object.keys(row).forEach(key => {
-    if (key.startsWith('__')) return; // skip row number metadata
-    if (!mapped.hasOwnProperty(key)) {
-      mapped[key] = row[key];
-    }
-  });
-
-  return mapped;
-}
-
+const { mapSheetToInternal } = require('../utils/mappers');
 // 1. GET all apprentices (active or completed, branch-restricted if Branch HR)
 router.get('/', authMiddleware, async (req, res) => {
   const { type, location } = req.query; // type: active | completed | all

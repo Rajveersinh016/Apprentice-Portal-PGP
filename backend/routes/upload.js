@@ -214,7 +214,12 @@ router.post('/', authMiddleware, (req, res, next) => {
       newColumnsCreated: report.newColumnsCreated,
       totalProcessed: report.totalProcessed,
       executionTime: report.executionTime,
-      uploadSuccess: report.uploadSuccess
+      uploadSuccess: report.uploadSuccess,
+      // Post-write integrity verification counts (Bug 2 fix)
+      verifiedActiveCount: report.verifiedActiveCount,
+      verifiedCompletedCount: report.verifiedCompletedCount,
+      expectedActiveCount: report.expectedActiveCount,
+      expectedCompletedCount: report.expectedCompletedCount
     };
 
     if (dryRun) {

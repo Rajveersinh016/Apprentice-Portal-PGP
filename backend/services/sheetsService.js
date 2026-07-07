@@ -49,19 +49,23 @@ const dbMutex = new Mutex();
 // ============================================================
 // IN-MEMORY SERVER CACHE — shared across ALL concurrent users
 // Eliminates redundant Google Sheets API calls.
-// TTL: active/completed = 30s, users = 5min, audit = 60s
+// TTL: active/completed = 30s, users = 5min,
+//      profileAudit = 60s (separate lifecycle from data writes),
+//      uploadAuditLogs = 60s (read-only history, separate lifecycle)
 // Invalidated automatically on any write operation.
 // ============================================================
 const dataCache = {
-  active:    { data: null, headers: null, ts: 0, isRefreshing: false },
-  completed: { data: null, headers: null, ts: 0, isRefreshing: false },
-  users:     { data: null, ts: 0, isRefreshing: false },
-  audit:     { data: null, ts: 0, isRefreshing: false },
+  active:          { data: null, headers: null, ts: 0, isRefreshing: false },
+  completed:       { data: null, headers: null, ts: 0, isRefreshing: false },
+  users:           { data: null, ts: 0, isRefreshing: false },
+  audit:           { data: null, ts: 0, isRefreshing: false },
+  uploadAuditLogs: { data: null, ts: 0 },
   TTL: {
-    active:    30 * 1000,        // 30 seconds
-    completed: 30 * 1000,        // 30 seconds
-    users:     300 * 1000,       // 5 minutes
-    audit:     60 * 1000         // 60 seconds
+    active:          30 * 1000,   // 30 seconds
+    completed:       30 * 1000,   // 30 seconds
+    users:           300 * 1000,  // 5 minutes
+    audit:           60 * 1000,   // 60 seconds (profile audit logs)
+    uploadAuditLogs: 60 * 1000    // 60 seconds (upload history)
   }
 };
 
@@ -70,12 +74,14 @@ function isCacheValid(key) {
          (Date.now() - dataCache[key].ts) < dataCache.TTL[key];
 }
 
+// Invalidates the primary data caches (active + completed records).
+// FIX (Bug 8): Does NOT invalidate audit caches — they have independent
+// lifecycles. Profile audit and upload audit logs are append-only historical
+// records that are not affected by data writes to Active/Completed sheets.
 function invalidateDataCache() {
   dataCache.active.data    = null;
   dataCache.completed.data = null;
-  dataCache.audit.data     = null;
-  // Note: users cache NOT invalidated here (separate lifecycle)
-  // console.log('sheetsService: Cache invalidated — next read will fetch fresh data from Google Sheets.');
+  // Note: users, audit, uploadAuditLogs caches NOT invalidated here (separate lifecycle)
 }
 
 async function triggerBackgroundRefresh(key) {
@@ -435,14 +441,15 @@ async function getSheetData(sheetName) {
   }
 }
 
-// ============================================================
-// PUBLIC API METHODS (ALL SAFE WITH MUTEX LOCKS)
-// ============================================================
+let sheetsVerified = false;
 
 async function ensureSheetsExist() {
+  if (sheetsVerified) return;
   const release = await dbMutex.acquire();
   try {
+    if (sheetsVerified) return;
     await ensureSheetsExistInternal();
+    sheetsVerified = true;
   } finally {
     release();
   }
@@ -1074,9 +1081,21 @@ async function upsertActiveApprentices(incomingRecords, updatedBy, fileName, dry
       }
     });
 
-    // 5. Batch update spreadsheet tabs (Writing in-place and clearing stale rows only)
+    // 5. Batch update spreadsheet tabs (Write all final rows, then ALWAYS clear the
+    //    remainder of the sheet down to a safe upper bound of 5000 rows).
+    //
+    // FIX (Bug 1 — Ghost Records): The previous logic only cleared rows between
+    // finalActiveList.length+2 and activeRaw.length+1. This is WRONG in two cases:
+    //   a) When finalActiveList.length >= activeRaw.length (no clear happens at all).
+    //   b) When the sheet was manually emptied externally (activeRaw.length=0), making
+    //      the clear range "A2:ZZ1" — an invalid empty range that clears nothing,
+    //      leaving all previously-written ghost rows intact.
+    // Fix: Always clear from finalActiveList.length+2 to row 5000 unconditionally
+    // after every write. This is safe and O(1) in the Sheets API.
     const finalActiveList = Array.from(activeMap.values());
     const activeValues = objectsToValues(finalActiveList, activeHeaders);
+    // FIX: Safe upper bound for clear — 5000 rows covers any realistic dataset.
+    const SHEET_ROW_SAFE_LIMIT = 5000;
 
     if (!dryRun) {
       await executeWithRetry(() => client.spreadsheets.values.update({
@@ -1088,10 +1107,12 @@ async function upsertActiveApprentices(incomingRecords, updatedBy, fileName, dry
         }
       }));
 
-      if (activeRaw.length > finalActiveList.length) {
+      // ALWAYS clear stale rows below the final list — unconditional (Bug 1 fix)
+      const activeClearStart = finalActiveList.length + 2;
+      if (activeClearStart <= SHEET_ROW_SAFE_LIMIT) {
         await executeWithRetry(() => client.spreadsheets.values.clear({
           spreadsheetId,
-          range: `Active_Apprentices!A${finalActiveList.length + 2}:ZZ${activeRaw.length + 1}`
+          range: `Active_Apprentices!A${activeClearStart}:ZZ${SHEET_ROW_SAFE_LIMIT}`
         }));
       }
     }
@@ -1109,10 +1130,12 @@ async function upsertActiveApprentices(incomingRecords, updatedBy, fileName, dry
         }
       }));
 
-      if (completedRaw.length > finalCompletedList.length) {
+      // ALWAYS clear stale rows below the final list — unconditional (Bug 1 fix)
+      const completedClearStart = finalCompletedList.length + 2;
+      if (completedClearStart <= SHEET_ROW_SAFE_LIMIT) {
         await executeWithRetry(() => client.spreadsheets.values.clear({
           spreadsheetId,
-          range: `Completed_Apprentices!A${finalCompletedList.length + 2}:ZZ${completedRaw.length + 1}`
+          range: `Completed_Apprentices!A${completedClearStart}:ZZ${SHEET_ROW_SAFE_LIMIT}`
         }));
       }
     }
@@ -1133,6 +1156,13 @@ async function upsertActiveApprentices(incomingRecords, updatedBy, fileName, dry
       duration + "ms"
     ];
 
+    // FIX (Bug 2 — Post-write verification): After writing, perform a fresh
+    // direct read from Google Sheets (bypassing all caches) to get the actual
+    // row counts currently stored. This verifies that the write succeeded and
+    // that no ghost rows remain.
+    let verifiedActiveCount = null;
+    let verifiedCompletedCount = null;
+
     if (!dryRun) {
       await executeWithRetry(() => client.spreadsheets.values.append({
         spreadsheetId,
@@ -1146,6 +1176,36 @@ async function upsertActiveApprentices(incomingRecords, updatedBy, fileName, dry
 
       // Invalidate cache — bulk upload changes both sheets
       invalidateDataCache();
+      // Also invalidate upload audit log cache so history page shows new entry
+      dataCache.uploadAuditLogs.data = null;
+
+      // Post-write integrity verification (bypass cache — direct Sheets API call)
+      try {
+        const verifyActive = await executeWithRetry(() => client.spreadsheets.values.get({
+          spreadsheetId,
+          range: 'Active_Apprentices!A:A',
+        }));
+        const verifyCompleted = await executeWithRetry(() => client.spreadsheets.values.get({
+          spreadsheetId,
+          range: 'Completed_Apprentices!A:A',
+        }));
+        const activeRows = (verifyActive.data.values || []).length;
+        const completedRows = (verifyCompleted.data.values || []).length;
+        // Row 1 is the header, so subtract 1 to get data row count
+        verifiedActiveCount = Math.max(0, activeRows - 1);
+        verifiedCompletedCount = Math.max(0, completedRows - 1);
+
+        if (verifiedActiveCount !== finalActiveList.length) {
+          console.error(
+            `[CRITICAL DATA INTEGRITY MISMATCH] Active_Apprentices: expected ${
+              finalActiveList.length
+            } rows, but Google Sheets reports ${verifiedActiveCount} rows after write.`
+          );
+        }
+      } catch (verifyErr) {
+        console.error('sheetsService: Post-write verification read failed:', verifyErr.message);
+        // Non-fatal: the write already succeeded; verification is informational
+      }
     }
 
     return {
@@ -1156,7 +1216,11 @@ async function upsertActiveApprentices(incomingRecords, updatedBy, fileName, dry
       newColumnsCreated: newKeys,
       totalProcessed: incomingRecords.length,
       executionTime: duration + "ms",
-      uploadSuccess: true
+      uploadSuccess: true,
+      verifiedActiveCount,
+      verifiedCompletedCount,
+      expectedActiveCount: finalActiveList.length,
+      expectedCompletedCount: finalCompletedList.length
     };
 
   } catch (err) {
@@ -1233,8 +1297,16 @@ async function getProfileAuditLogs(code) {
   return logs;
 }
 
+// FIX (Bug 7): getUploadAuditLogs is READ-ONLY. Holding the dbMutex during a
+// Google Sheets API call (1-3s) blocks ALL concurrent write operations system-wide.
+// Fix: Removed mutex entirely. Added a dedicated 60s cache for upload audit history.
+// The uploadAuditLogs cache is only invalidated after a successful upload write.
 async function getUploadAuditLogs() {
-  const release = await dbMutex.acquire();
+  // Serve from dedicated cache if still valid (60s TTL)
+  if (isCacheValid('uploadAuditLogs')) {
+    return dataCache.uploadAuditLogs.data;
+  }
+
   try {
     const client = getSheetsClient();
     const response = await executeWithRetry(() => client.spreadsheets.values.get({
@@ -1242,7 +1314,11 @@ async function getUploadAuditLogs() {
       range: 'AuditLogs!A1:I5000',
     }));
     const rawValues = response.data.values || [];
-    if (rawValues.length <= 1) return [];
+    if (rawValues.length <= 1) {
+      dataCache.uploadAuditLogs.data = [];
+      dataCache.uploadAuditLogs.ts   = Date.now();
+      return [];
+    }
 
     const headers = rawValues[0].map(h => String(h).trim());
     const logs = [];
@@ -1307,13 +1383,15 @@ async function getUploadAuditLogs() {
       const dateB = new Date(String(b["Upload Time"]).replace(' ', 'T'));
       return dateB - dateA;
     });
+
+    // Store in dedicated cache
+    dataCache.uploadAuditLogs.data = normalizedLogs;
+    dataCache.uploadAuditLogs.ts   = Date.now();
     
     return normalizedLogs;
   } catch (err) {
     console.error("sheetsService: Error reading upload audit logs:", err.message);
     return [];
-  } finally {
-    release();
   }
 }
 

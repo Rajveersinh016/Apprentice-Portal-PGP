@@ -304,22 +304,6 @@ const AppDB = {
     return data.apprentice;
   },
 
-  getUsers() {
-    return JSON.parse(localStorage.getItem('pgp_users')) || [];
-  },
-
-  saveUsers(data) {
-    localStorage.setItem('pgp_users', JSON.stringify(data));
-  },
-
-  getAudit() {
-    return JSON.parse(localStorage.getItem('pgp_audit')) || [];
-  },
-
-  saveAudit(data) {
-    localStorage.setItem('pgp_audit', JSON.stringify(data));
-  },
-
   getRole() {
     return localStorage.getItem('pgp_role');
   },
@@ -347,20 +331,6 @@ const AppDB = {
     localStorage.setItem('pgp_branch', branch);
   },
 
-  addAuditLog(code, name, location, dept, status, field) {
-    const audit = JSON.parse(localStorage.getItem('pgp_audit')) || [];
-    const now = new Date();
-    const dateStr = now.getFullYear() + '-' +
-      String(now.getMonth() + 1).padStart(2, '0') + '-' +
-      String(now.getDate()).padStart(2, '0') + ' ' +
-      String(now.getHours()).padStart(2, '0') + ':' +
-      String(now.getMinutes()).padStart(2, '0');
-
-    audit.unshift({ code, name, location, dept, status, updated: dateStr, field });
-    if (audit.length > 50) audit.pop();
-    localStorage.setItem('pgp_audit', JSON.stringify(audit));
-  },
-
   async updateApprentice(code, fields) {
     const backendUrl = this.getBackendUrl();
     const response = await fetch(`${backendUrl}/api/apprentices/${encodeURIComponent(code)}`, {
@@ -376,9 +346,6 @@ const AppDB = {
     // Invalidate cache so next getApprentices() reflects updated record
     this.invalidateCache();
     await this.init();
-    const list = this.getApprentices();
-    const app = list.find(x => x.code === code);
-    if (app) this.addAuditLog(code, app.name, app.location, app.dept, app.status, 'Profile Details Updated');
     return { success: true };
   },
 
@@ -397,7 +364,6 @@ const AppDB = {
     // Invalidate cache so completion is reflected immediately
     this.invalidateCache();
     await this.init();
-    this.addAuditLog(code, code, '', '', 'Completed', 'Apprenticeship Completed');
     return { success: true };
   },
 
@@ -1185,7 +1151,9 @@ const DashboardPage = {
     const tbody = document.getElementById('recent-updates-tbody');
     if (!tbody) return;
 
-    const logs = AppDB.getAudit();
+    // FIX (Bug 4): Local storage client-only audit logs are removed to ensure
+    // data is always synchronized with the Google Sheets database source of truth.
+    const logs = [];
     const activeBranch = AppDB.getBranch();
     const role = AppDB.getRole();
 
@@ -1483,8 +1451,18 @@ const ApprenticesPage = {
       }
     }
 
+    const searchInput = document.getElementById('table-search');
+    const deptFilter = document.getElementById('filter-dept');
+    const statusFilter = document.getElementById('filter-status');
+    const dateStart = document.getElementById('filter-date-start');
+    const dateEnd = document.getElementById('filter-date-end');
+    if (searchInput) searchInput.value = '';
+    if (deptFilter) deptFilter.value = '';
+    if (statusFilter) statusFilter.value = '';
+    if (dateStart) dateStart.value = '';
+    if (dateEnd) dateEnd.value = '';
+
     this.loadData();
-    this.bindFilters();
     this.applySessionFilters();
     this.currentPage = 1;
     this.render();
@@ -2364,6 +2342,8 @@ const ExcelUploadPage = {
       }
 
       this.parsedRecords = resData.records || [];
+      // Store timestamp of validation dry run (Bug 5)
+      this.dryRunTimestamp = Date.now();
 
       stateUploading.style.display = 'none';
       stateResults.style.display = 'block';
@@ -2487,6 +2467,12 @@ const ExcelUploadPage = {
   },
 
   async commitImport() {
+    // BUG 5 Check: prevent committing if validation is extremely stale (over 10 minutes)
+    if (this.dryRunTimestamp && (Date.now() - this.dryRunTimestamp) > 10 * 60 * 1000) {
+      Toast.error('Validation Expired', 'Your validation session has expired. Please re-upload the spreadsheet file.', 5000);
+      return;
+    }
+
     const confirmBtn = document.getElementById('btn-confirm-import');
     const cancelBtn = document.getElementById('btn-cancel-import');
 
@@ -3630,6 +3616,25 @@ const UsersPage = {
   bindActions() {
     const addUserForm = document.getElementById('add-user-form');
     if (addUserForm) {
+      // FIX (Bug 6): reset the branch assignment toggle state whenever clicking "Add New User"
+      const addBtn = document.querySelector('.page-header-actions button');
+      if (addBtn) {
+        addBtn.addEventListener('click', () => {
+          addUserForm.reset();
+          const addPwd = document.getElementById('user-password');
+          if (addPwd) {
+            addPwd.value = '';
+            addPwd.type = 'password';
+          }
+          const addEye = document.getElementById('pwd-eye-add');
+          if (addEye) addEye.className = 'fas fa-eye';
+          
+          if (typeof toggleAddUserLocation === 'function') {
+            toggleAddUserLocation('Branch HR');
+          }
+        });
+      }
+
       addUserForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const name = document.getElementById('user-name').value.trim();
@@ -3683,6 +3688,11 @@ const UsersPage = {
             document.getElementById('edit-user-email').value = user.email;
             document.getElementById('edit-user-role').value = user.role;
             document.getElementById('edit-user-location').value = user.location;
+
+            // FIX (Bug 6): toggle visibility of location selection dropdown based on loaded role
+            if (typeof toggleEditUserLocation === 'function') {
+              toggleEditUserLocation(user.role);
+            }
 
             // Clear password reset field in edit modal when opening
             const editPwd = document.getElementById('edit-user-password');
