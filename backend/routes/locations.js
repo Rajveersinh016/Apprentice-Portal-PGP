@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const sheetsService = require('../services/sheetsService');
 const authMiddleware = require('../middleware/auth');
+const { requestStorage } = require('../utils/logger');
 
 /**
  * GET /api/locations
@@ -33,6 +34,11 @@ router.get('/', authMiddleware, async (req, res) => {
     const locations = Array.from(locationSet).sort((a, b) =>
       a.localeCompare(b, undefined, { sensitivity: 'base' })
     );
+
+    const store = requestStorage.getStore();
+    if (store) {
+      store.recordCount = locations.length;
+    }
 
     return res.json({ success: true, locations });
   } catch (err) {

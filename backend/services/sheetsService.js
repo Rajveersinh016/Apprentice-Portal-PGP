@@ -2,6 +2,14 @@ const { google } = require('googleapis');
 const path = require('path');
 const fs = require('fs');
 const dotenv = require('dotenv');
+const { requestStorage } = require('../utils/logger');
+
+function updateStore(updateFn) {
+  const store = requestStorage.getStore();
+  if (store) {
+    updateFn(store);
+  }
+}
 
 dotenv.config();
 // Also try .env.local as fallback (for local dev without a .env file)
@@ -69,6 +77,26 @@ const dataCache = {
   }
 };
 
+let activeCacheVersion = 0;
+let completedCacheVersion = 0;
+let usersCacheVersion = 0;
+let auditCacheVersion = 0;
+let uploadAuditLogsCacheVersion = 0;
+
+let lastGoogleActiveCount = 'N/A';
+let lastGoogleCompletedCount = 'N/A';
+
+function getCacheInfo() {
+  return {
+    sheetActiveCount: lastGoogleActiveCount,
+    sheetCompletedCount: lastGoogleCompletedCount,
+    cacheActiveCount: dataCache.active.data ? dataCache.active.data.length : 'N/A',
+    cacheCompletedCount: dataCache.completed.data ? dataCache.completed.data.length : 'N/A',
+    cacheAge: dataCache.active.data && dataCache.active.ts ? Date.now() - dataCache.active.ts : 'N/A',
+    cacheTTL: dataCache.TTL.active
+  };
+}
+
 function isCacheValid(key) {
   return dataCache[key].data !== null &&
          (Date.now() - dataCache[key].ts) < dataCache.TTL[key];
@@ -81,6 +109,9 @@ function isCacheValid(key) {
 function invalidateDataCache() {
   dataCache.active.data    = null;
   dataCache.completed.data = null;
+  activeCacheVersion++;
+  completedCacheVersion++;
+  updateStore(s => { s.cacheInvalidated = true; });
   // Note: users, audit, uploadAuditLogs caches NOT invalidated here (separate lifecycle)
 }
 
@@ -90,32 +121,46 @@ async function triggerBackgroundRefresh(key) {
 
   try {
     const client = getSheetsClient();
+    updateStore(s => { s.googleApiCalled = true; });
     if (key === 'active') {
+      const startVersion = activeCacheVersion;
       const response = await executeWithRetry(() => client.spreadsheets.values.get({
         spreadsheetId,
         range: 'Active_Apprentices!A1:ZZ10000',
       }));
       const rawValues = response.data.values || [];
-      if (rawValues.length > 0) {
-        dataCache.active.headers = rawValues[0].map(h => String(h).trim());
+      const headers = rawValues.length > 0 ? rawValues[0].map(h => String(h).trim()) : [];
+      const data = valuesToObjects(rawValues);
+
+      if (startVersion === activeCacheVersion) {
+        dataCache.active.headers = headers;
+        dataCache.active.data = data;
+        dataCache.active.ts   = Date.now();
+        lastGoogleActiveCount = data.length;
       }
-      dataCache.active.data = valuesToObjects(rawValues);
-      dataCache.active.ts   = Date.now();
     } else if (key === 'completed') {
+      const startVersion = completedCacheVersion;
       const response = await executeWithRetry(() => client.spreadsheets.values.get({
         spreadsheetId,
         range: 'Completed_Apprentices!A1:ZZ10000',
       }));
       const rawValues = response.data.values || [];
-      if (rawValues.length > 0) {
-        dataCache.completed.headers = rawValues[0].map(h => String(h).trim());
+      const headers = rawValues.length > 0 ? rawValues[0].map(h => String(h).trim()) : [];
+      const data = valuesToObjects(rawValues);
+
+      if (startVersion === completedCacheVersion) {
+        dataCache.completed.headers = headers;
+        dataCache.completed.data = data;
+        dataCache.completed.ts   = Date.now();
+        lastGoogleCompletedCount = data.length;
       }
-      dataCache.completed.data = valuesToObjects(rawValues);
-      dataCache.completed.ts   = Date.now();
     } else if (key === 'users') {
+      const startVersion = usersCacheVersion;
       const result = await getSheetData('Users');
-      dataCache.users.data = result;
-      dataCache.users.ts   = Date.now();
+      if (startVersion === usersCacheVersion) {
+        dataCache.users.data = result;
+        dataCache.users.ts   = Date.now();
+      }
     }
   } catch (err) {
     console.error(`sheetsService: Background refresh failed for ${key}:`, err.message);
@@ -458,16 +503,20 @@ async function ensureSheetsExist() {
 async function getAllUsers() {
   if (dataCache.users.data !== null) {
     const age = Date.now() - dataCache.users.ts;
-    if (age >= 240 * 1000) {
-      triggerBackgroundRefresh('users').catch(err => console.error("Background users refresh error:", err.message));
+    if (age < dataCache.TTL.users) {
+      updateStore(s => { s.cacheUsed = true; });
+      return dataCache.users.data;
     }
-    return dataCache.users.data;
   }
+  const startVersion = usersCacheVersion;
   const release = await dbMutex.acquire();
   try {
+    updateStore(s => { s.googleApiCalled = true; });
     const result = await getSheetData('Users');
-    dataCache.users.data = result;
-    dataCache.users.ts   = Date.now();
+    if (startVersion === usersCacheVersion) {
+      dataCache.users.data = result;
+      dataCache.users.ts   = Date.now();
+    }
     return result;
   } finally {
     release();
@@ -506,35 +555,41 @@ async function saveUsers(users) {
 
     // Invalidate users cache after write
     dataCache.users.data = null;
+    usersCacheVersion++;
   } finally {
     release();
   }
 }
 
 // Read-only: NO mutex needed — cache-aware, safe for concurrent access
-// Read-only: NO mutex needed — cache-aware, safe for concurrent access
-async function getActiveApprentices() {
-  if (dataCache.active.data !== null) {
+async function getActiveApprentices(bypassCache = false) {
+  if (!bypassCache && dataCache.active.data !== null) {
     const age = Date.now() - dataCache.active.ts;
-    if (age >= 240 * 1000) {
-      triggerBackgroundRefresh('active').catch(err => console.error("Background active refresh error:", err.message));
+    if (age < dataCache.TTL.active) {
+      updateStore(s => { s.cacheUsed = true; });
+      return dataCache.active.data;
     }
-    return dataCache.active.data;
   }
 
+  const startVersion = activeCacheVersion;
   const client = getSheetsClient();
   try {
+    updateStore(s => { s.googleApiCalled = true; });
     const response = await executeWithRetry(() => client.spreadsheets.values.get({
       spreadsheetId,
       range: 'Active_Apprentices!A1:ZZ10000',
     }));
     const rawValues = response.data.values || [];
-    if (rawValues.length > 0) {
-      dataCache.active.headers = rawValues[0].map(h => String(h).trim());
+    const headers = rawValues.length > 0 ? rawValues[0].map(h => String(h).trim()) : [];
+    const data = valuesToObjects(rawValues);
+
+    if (startVersion === activeCacheVersion) {
+      dataCache.active.headers = headers;
+      dataCache.active.data = data;
+      dataCache.active.ts   = Date.now();
     }
-    dataCache.active.data = valuesToObjects(rawValues);
-    dataCache.active.ts   = Date.now();
-    return dataCache.active.data;
+    lastGoogleActiveCount = data.length;
+    return data;
   } catch (err) {
     console.error('sheetsService: Error reading Active_Apprentices:', err.message);
     throw err;
@@ -542,28 +597,34 @@ async function getActiveApprentices() {
 }
 
 // Read-only: NO mutex needed — cache-aware, safe for concurrent access
-async function getCompletedApprentices() {
-  if (dataCache.completed.data !== null) {
+async function getCompletedApprentices(bypassCache = false) {
+  if (!bypassCache && dataCache.completed.data !== null) {
     const age = Date.now() - dataCache.completed.ts;
-    if (age >= 240 * 1000) {
-      triggerBackgroundRefresh('completed').catch(err => console.error("Background completed refresh error:", err.message));
+    if (age < dataCache.TTL.completed) {
+      updateStore(s => { s.cacheUsed = true; });
+      return dataCache.completed.data;
     }
-    return dataCache.completed.data;
   }
 
+  const startVersion = completedCacheVersion;
   const client = getSheetsClient();
   try {
+    updateStore(s => { s.googleApiCalled = true; });
     const response = await executeWithRetry(() => client.spreadsheets.values.get({
       spreadsheetId,
       range: 'Completed_Apprentices!A1:ZZ10000',
     }));
     const rawValues = response.data.values || [];
-    if (rawValues.length > 0) {
-      dataCache.completed.headers = rawValues[0].map(h => String(h).trim());
+    const headers = rawValues.length > 0 ? rawValues[0].map(h => String(h).trim()) : [];
+    const data = valuesToObjects(rawValues);
+
+    if (startVersion === completedCacheVersion) {
+      dataCache.completed.headers = headers;
+      dataCache.completed.data = data;
+      dataCache.completed.ts   = Date.now();
     }
-    dataCache.completed.data = valuesToObjects(rawValues);
-    dataCache.completed.ts   = Date.now();
-    return dataCache.completed.data;
+    lastGoogleCompletedCount = data.length;
+    return data;
   } catch (err) {
     console.error('sheetsService: Error reading Completed_Apprentices:', err.message);
     throw err;
@@ -1410,5 +1471,6 @@ module.exports = {
   getProfileAuditLogs,
   getUploadAuditLogs,
   invalidateDataCache, // Exported for route-level cache invalidation
-  executeWithRetry
+  executeWithRetry,
+  getCacheInfo
 };

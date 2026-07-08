@@ -3,6 +3,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const fs = require('fs');
 const path = require('path');
+const { requestStorage, logTrace } = require('./utils/logger');
 const authRoutes = require('./routes/auth');
 const apprenticeRoutes = require('./routes/apprentices');
 const uploadRoutes = require('./routes/upload');
@@ -49,6 +50,72 @@ if (process.env.NODE_ENV === 'production') {
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Request tracing middleware
+app.use((req, res, next) => {
+  const requestId = req.headers['x-request-id'] || ('REQ-' + Math.random().toString(36).substring(2, 8).toUpperCase() + '-' + Date.now().toString().slice(-4));
+  const startTime = Date.now();
+  const threadName = `Main (PID: ${process.pid})`;
+
+  const store = {
+    requestId,
+    url: req.originalUrl,
+    cacheUsed: false,
+    googleApiCalled: false,
+    cacheInvalidated: false,
+    recordCount: 0,
+    startTime
+  };
+
+  res.setHeader('x-request-id', requestId);
+
+  requestStorage.run(store, () => {
+    res.on('finish', () => {
+      if (!req.originalUrl.startsWith('/api') || req.originalUrl === '/api/health') {
+        return;
+      }
+
+      const timestamp = new Date().toISOString();
+      const sheetsCacheInfo = sheetsService.getCacheInfo ? sheetsService.getCacheInfo() : {};
+      const analyticsCache = require('./services/analyticsCache');
+      const hasAnalyticsKeys = analyticsCache.caches ? Object.keys(analyticsCache.caches).length > 0 : false;
+
+      logTrace(
+        `\n====================================================\n` +
+        `[REQUEST TRACE] ${timestamp}\n` +
+        `----------------------------------------------------\n` +
+        `Timestamp: ${timestamp}\n` +
+        `Request ID: ${requestId}\n` +
+        `Browser URL: ${req.headers['x-browser-url'] || 'N/A'}\n` +
+        `API URL: ${req.originalUrl}\n` +
+        `Backend PID: ${process.pid}\n` +
+        `Node Process ID: ${process.pid}\n` +
+        `Current Working Directory: ${process.cwd()}\n` +
+        `__dirname: ${__dirname}\n` +
+        `Server Port: ${PORT}\n` +
+        `Google Spreadsheet ID: ${process.env.SPREADSHEET_ID || 'N/A'}\n` +
+        `Google Sheet Active Count: ${sheetsCacheInfo.sheetActiveCount !== undefined ? sheetsCacheInfo.sheetActiveCount : 'N/A'}\n` +
+        `Google Sheet Completed Count: ${sheetsCacheInfo.sheetCompletedCount !== undefined ? sheetsCacheInfo.sheetCompletedCount : 'N/A'}\n` +
+        `Cache Active Count: ${sheetsCacheInfo.cacheActiveCount !== undefined ? sheetsCacheInfo.cacheActiveCount : 'N/A'}\n` +
+        `Cache Completed Count: ${sheetsCacheInfo.cacheCompletedCount !== undefined ? sheetsCacheInfo.cacheCompletedCount : 'N/A'}\n` +
+        `Cache Age: ${sheetsCacheInfo.cacheAge !== undefined ? sheetsCacheInfo.cacheAge + 'ms' : 'N/A'}\n` +
+        `Cache TTL: ${sheetsCacheInfo.cacheTTL !== undefined ? sheetsCacheInfo.cacheTTL + 'ms' : 'N/A'}\n` +
+        `Cache Source: ${store.cacheUsed ? 'Cache' : (store.googleApiCalled ? 'Google API' : 'N/A')}\n` +
+        `Analytics Cache Status: ${hasAnalyticsKeys ? 'Warm' : 'Cold'}\n` +
+        `Reports Cache Status: N/A\n` +
+        `Frontend AppDB Cache Count: ${req.headers['x-frontend-appdb-cache-count'] || 'N/A'}\n` +
+        `Frontend Local Storage: ${req.headers['x-frontend-local-storage'] || 'N/A'}\n` +
+        `Frontend Session Storage: ${req.headers['x-frontend-session-storage'] || 'N/A'}\n` +
+        `Final API Response Count: ${store.recordCount}\n` +
+        `Final Rendered Count: ${store.recordCount}\n` +
+        `Execution Time: ${Date.now() - startTime}ms\n` +
+        `====================================================`
+      );
+    });
+
+    next();
+  });
+});
 
 // ============================================================
 // PRIORITY 1 — SECURITY HEADERS MIDDLEWARE

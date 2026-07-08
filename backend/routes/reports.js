@@ -3,6 +3,7 @@ const router = express.Router();
 const sheetsService = require('../services/sheetsService');
 const { executeWithRetry } = sheetsService;
 const authMiddleware = require('../middleware/auth');
+const { requestStorage } = require('../utils/logger');
 const reportService = require('../services/reportService');
 const XLSX = require('xlsx');
 
@@ -254,6 +255,11 @@ router.post('/preview', authMiddleware, async (req, res) => {
       .filter(k => actualFilters[k] !== undefined && actualFilters[k] !== '' && actualFilters[k] !== 'All' && actualFilters[k] !== 'All Locations')
       .map(k => `${k}: ${actualFilters[k]}`)
       .join(', ') || 'None';
+
+    const store = requestStorage.getStore();
+    if (store) {
+      store.recordCount = filteredRecords.length;
+    }
 
     return res.json({
       success: true,
@@ -526,6 +532,11 @@ router.post('/export', authMiddleware, async (req, res) => {
     res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Disposition', `attachment; filename="${safeTitle}_Report.${ext}"`);
     res.setHeader('Content-Length', fileBuffer.length);
+    const store = requestStorage.getStore();
+    if (store) {
+      store.recordCount = filteredRecords.length;
+    }
+
     return res.send(fileBuffer);
 
   } catch (err) {
@@ -538,6 +549,10 @@ router.post('/export', authMiddleware, async (req, res) => {
 router.get('/headers', authMiddleware, async (req, res) => {
   try {
     const { activeHeaders, completedHeaders } = await fetchSheetHeaders();
+    const store = requestStorage.getStore();
+    if (store) {
+      store.recordCount = activeHeaders.length + completedHeaders.length;
+    }
     return res.json({ success: true, activeHeaders, completedHeaders });
   } catch (err) {
     console.error('Headers Fetch Error:', err);

@@ -1,3 +1,12 @@
+const { requestStorage } = require('../utils/logger');
+
+function updateStore(updateFn) {
+  const store = requestStorage.getStore();
+  if (store) {
+    updateFn(store);
+  }
+}
+
 // Analytics computation cache — TTL 300 seconds (5 minutes)
 const analyticsCache = {
   caches: {},
@@ -6,6 +15,7 @@ const analyticsCache = {
   get(key) {
     const entry = this.caches[key];
     if (entry && (Date.now() - entry.ts) < this.TTL) {
+      updateStore(s => { s.cacheUsed = true; });
       return entry.data;
     }
     return null;
@@ -20,7 +30,7 @@ const analyticsCache = {
 
   invalidate() {
     this.caches = {};
-    // console.log('analyticsCache: Cache invalidated.');
+    updateStore(s => { s.cacheInvalidated = true; });
   }
 };
 

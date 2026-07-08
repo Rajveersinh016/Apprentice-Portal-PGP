@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const sheetsService = require('../services/sheetsService');
 const authMiddleware = require('../middleware/auth');
+const { requestStorage } = require('../utils/logger');
 
 const analyticsCache = require('../services/analyticsCache');
 
@@ -9,6 +10,7 @@ const { mapSheetToInternal } = require('../utils/mappers');
 // 1. GET all apprentices (active or completed, branch-restricted if Branch HR)
 router.get('/', authMiddleware, async (req, res) => {
   const { type, location } = req.query; // type: active | completed | all
+  const bypassCache = req.query.bypassCache === 'true';
   const user = req.user;
 
   try {
@@ -16,12 +18,12 @@ router.get('/', authMiddleware, async (req, res) => {
     let completed = [];
 
     if (type === 'active' || type === 'all' || !type) {
-      const activeRaw = await sheetsService.getActiveApprentices();
+      const activeRaw = await sheetsService.getActiveApprentices(bypassCache);
       active = activeRaw.map(r => mapSheetToInternal(r, false));
     }
 
     if (type === 'completed' || type === 'all') {
-      const completedRaw = await sheetsService.getCompletedApprentices();
+      const completedRaw = await sheetsService.getCompletedApprentices(bypassCache);
       completed = completedRaw.map(r => mapSheetToInternal(r, true));
     }
 
@@ -34,6 +36,11 @@ router.get('/', authMiddleware, async (req, res) => {
     } else if (user.role === 'Super HR' && location && location !== 'All Locations') {
       // Super HR filtering by location param
       combined = combined.filter(app => String(app.location).toLowerCase().trim() === String(location).toLowerCase().trim());
+    }
+
+    const store = requestStorage.getStore();
+    if (store) {
+      store.recordCount = combined.length;
     }
 
     return res.json({ success: true, apprentices: combined });
@@ -57,6 +64,10 @@ router.get('/analytics', authMiddleware, async (req, res) => {
   const cacheKey = `${user.role}_${user.location || 'All'}_${location || 'All'}`;
   const cachedData = analyticsCache.get(cacheKey);
   if (cachedData) {
+    const store = requestStorage.getStore();
+    if (store) {
+      store.recordCount = cachedData.total || 0;
+    }
     return res.json({ success: true, analytics: cachedData, cached: true });
   }
 
@@ -97,6 +108,11 @@ router.get('/analytics', authMiddleware, async (req, res) => {
     // Cache the computed result
     analyticsCache.set(cacheKey, analyticsResult);
 
+    const store = requestStorage.getStore();
+    if (store) {
+      store.recordCount = total;
+    }
+
     return res.json({ success: true, analytics: analyticsResult });
   } catch (err) {
     console.error('Analytics Fetch Error:', err);
@@ -128,6 +144,10 @@ router.get('/:code', authMiddleware, async (req, res) => {
     const isCompleted = !!completedRecord;
 
     if (!rawRecord) {
+      const store = requestStorage.getStore();
+      if (store) {
+        store.recordCount = 0;
+      }
       return res.status(404).json({ success: false, error: `Apprentice with code '${code}' not found.` });
     }
 
@@ -138,6 +158,11 @@ router.get('/:code', authMiddleware, async (req, res) => {
       if (appBranch !== userBranch) {
         return res.status(403).json({ success: false, error: 'Permission denied. Branch HR can only view profiles from their own branch.' });
       }
+    }
+
+    const store = requestStorage.getStore();
+    if (store) {
+      store.recordCount = 1;
     }
 
     return res.json({ success: true, apprentice: mapSheetToInternal(rawRecord, isCompleted) });
@@ -221,6 +246,11 @@ router.put('/:code', authMiddleware, async (req, res) => {
     await sheetsService.updateApprentice(code, mappedFields, updatedBy);
     analyticsCache.invalidate(); // profile update may change KPI metrics
 
+    const store = requestStorage.getStore();
+    if (store) {
+      store.recordCount = 1;
+    }
+
     return res.json({ success: true, message: 'Apprentice profile updated successfully.' });
   } catch (err) {
     console.error('Update Apprentice Error:', err);
@@ -239,6 +269,10 @@ router.get('/:code/audit', authMiddleware, async (req, res) => {
   const { code } = req.params;
   try {
     const auditLogs = await sheetsService.getProfileAuditLogs(code);
+    const store = requestStorage.getStore();
+    if (store) {
+      store.recordCount = auditLogs.length;
+    }
     return res.json({ success: true, logs: auditLogs });
   } catch (err) {
     console.error('Fetch Profile Audit Logs Error:', err);
@@ -304,6 +338,10 @@ router.post('/:code/complete', authMiddleware, async (req, res) => {
 
     await sheetsService.completeApprentice(code, completedBy, reason, otherReason, remarks);
     analyticsCache.invalidate(); // completion changes KPI metrics
+    const store = requestStorage.getStore();
+    if (store) {
+      store.recordCount = 1;
+    }
     return res.json({ success: true, message: 'Apprenticeship marked as completed successfully.' });
   } catch (err) {
     console.error('Complete Apprenticeship Error:', err);

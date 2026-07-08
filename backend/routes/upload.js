@@ -4,6 +4,7 @@ const multer = require('multer');
 const xlsx = require('xlsx');
 const sheetsService = require('../services/sheetsService');
 const authMiddleware = require('../middleware/auth');
+const { requestStorage } = require('../utils/logger');
 const analyticsCache = require('../services/analyticsCache');
 
 const storage = multer.memoryStorage();
@@ -27,6 +28,10 @@ const KNOWN_STD_NORMALIZED = [
 router.get('/history', authMiddleware, async (req, res) => {
   try {
     const logs = await sheetsService.getUploadAuditLogs();
+    const store = requestStorage.getStore();
+    if (store) {
+      store.recordCount = logs.length;
+    }
     return res.json({ success: true, logs });
   } catch (err) {
     console.error('Fetch Upload Logs Error:', err);
@@ -224,6 +229,11 @@ router.post('/', authMiddleware, (req, res, next) => {
 
     if (dryRun) {
       responsePayload.records = parsedRecords;
+    }
+
+    const store = requestStorage.getStore();
+    if (store) {
+      store.recordCount = parsedRecords.length;
     }
 
     return res.json(responsePayload);

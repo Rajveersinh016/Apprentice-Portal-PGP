@@ -21,3 +21,4 @@ backend/config/employee_master_reports.xlsx
 
 .vercel
 .env*
+backend/request_traces.log

@@ -5,6 +5,55 @@
 // All data is served from the live Google Sheets backend.
 // No demo, mock, or placeholder data is used anywhere in this application.
 
+// Override fetch to inject tracing headers automatically for all backend API calls
+(function() {
+  const originalFetch = window.fetch;
+  window.fetch = function(input, init) {
+    init = init || {};
+    init.headers = init.headers || {};
+
+    const url = typeof input === 'string' ? input : (input.url || '');
+    
+    // Get backend base URL
+    let backendUrl = '';
+    if (typeof AppDB !== 'undefined' && typeof AppDB.getBackendUrl === 'function') {
+      backendUrl = AppDB.getBackendUrl();
+    } else {
+      const fallback = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && 
+                       window.location.hostname !== '[::1]' && window.location.hostname !== '::1'
+        ? window.location.origin
+        : 'http://localhost:3001';
+      backendUrl = (localStorage.getItem('pgp_google_apps_script_url') || fallback).replace(/\/$/, '');
+    }
+
+    if (url.includes(backendUrl) || url.startsWith('/api')) {
+      const requestId = 'REQ-' + Math.random().toString(36).substring(2, 8).toUpperCase() + '-' + Date.now().toString().slice(-4);
+      
+      const appdbCacheCount = (typeof AppDB !== 'undefined' && AppDB._cache && AppDB._cache.data) 
+        ? String(AppDB._cache.data.length) 
+        : '0';
+
+      const localStr = JSON.stringify(localStorage || {});
+      const sessionStr = JSON.stringify(sessionStorage || {});
+
+      if (typeof init.headers.set === 'function') {
+        init.headers.set('x-request-id', requestId);
+        init.headers.set('x-browser-url', window.location.href);
+        init.headers.set('x-frontend-appdb-cache-count', appdbCacheCount);
+        init.headers.set('x-frontend-local-storage', localStr);
+        init.headers.set('x-frontend-session-storage', sessionStr);
+      } else {
+        init.headers['x-request-id'] = requestId;
+        init.headers['x-browser-url'] = window.location.href;
+        init.headers['x-frontend-appdb-cache-count'] = appdbCacheCount;
+        init.headers['x-frontend-local-storage'] = localStr;
+        init.headers['x-frontend-session-storage'] = sessionStr;
+      }
+    }
+    return originalFetch.call(this, input, init);
+  };
+})();
+
 // Mapping helper functions
 function mapSheetToInternal(row, isCompleted) {
   const mapped = {
