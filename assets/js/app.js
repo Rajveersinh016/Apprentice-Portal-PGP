@@ -2299,16 +2299,38 @@ const ApprenticeDetailPage = {
 const ExcelUploadPage = {
   selectedFile: null,
   parsedRecords: [],
+  uploadMode: 'active', // 'active' or 'completed'
 
   init() {
     this.bindEvents();
     this.loadUploadHistory();
   },
 
+  setUploadMode(mode) {
+    this.uploadMode = mode;
+    const activeTab = document.getElementById('tab-active-upload');
+    const completedTab = document.getElementById('tab-completed-upload');
+    if (activeTab && completedTab) {
+      if (mode === 'active') {
+        activeTab.classList.add('active');
+        completedTab.classList.remove('active');
+      } else {
+        completedTab.classList.add('active');
+        activeTab.classList.remove('active');
+      }
+    }
+    // Reset dropzone and file input
+    this.selectedFile = null;
+    this.parsedRecords = [];
+    const stateIdle = document.getElementById('upload-dropzone');
+    const stateResults = document.getElementById('upload-results-panel');
+    if (stateIdle) stateIdle.style.display = 'flex';
+    if (stateResults) stateResults.style.display = 'none';
+  },
+
   bindEvents() {
     const dropzone = document.getElementById('upload-dropzone');
     const fileInput = document.getElementById('file-input');
-    const uploadHistoryTbody = document.getElementById('upload-history-tbody');
 
     if (!dropzone || !fileInput) return;
 
@@ -2330,10 +2352,9 @@ const ExcelUploadPage = {
       }
     });
 
-    // File input change — clicking the dropzone area (not the button) opens the file picker
+    // File input change
     dropzone.addEventListener('click', (e) => {
-      // Ignore clicks from the Browse button — it has its own direct handler
-      if (e.target.closest('#btn-browse-files')) return;
+      if (e.target.closest('#btn-browse-files') || e.target.closest('#import-type-tabs')) return;
       fileInput.click();
     });
     fileInput.addEventListener('change', (e) => {
@@ -2367,7 +2388,6 @@ const ExcelUploadPage = {
     if (fileTitle) fileTitle.innerText = this.selectedFile.name;
     progress.style.width = '30%';
 
-    // ── LIVE MODE ONLY: POST file to Express backend ──
     const backendUrl = AppDB.getBackendUrl();
     const token = AppDB.getToken();
 
@@ -2377,9 +2397,13 @@ const ExcelUploadPage = {
 
       progress.style.width = '60%';
 
-      const response = await fetch(`${backendUrl}/api/upload?dryRun=true`, {
+      const endpoint = this.uploadMode === 'completed'
+        ? `${backendUrl}/api/upload/completed?dryRun=true`
+        : `${backendUrl}/api/upload?dryRun=true`;
+
+      const response = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + token }, // no Content-Type — FormData sets boundary
+        headers: { 'Authorization': 'Bearer ' + token },
         body: formData
       });
 
@@ -2391,7 +2415,6 @@ const ExcelUploadPage = {
       }
 
       this.parsedRecords = resData.records || [];
-      // Store timestamp of validation dry run (Bug 5)
       this.dryRunTimestamp = Date.now();
 
       stateUploading.style.display = 'none';
@@ -2409,85 +2432,204 @@ const ExcelUploadPage = {
   },
 
   renderLiveResults(data, isConfirmed = false) {
-    const inserted = data.inserted || 0;
-    const updated = data.updated || 0;
-    const total = data.totalProcessed || (inserted + updated);
-    const rejected = data.rejected ? data.rejected.length : 0;
-    const duplicates = data.duplicatesRemoved || 0;
-    const unchanged = Math.max(0, total - inserted - updated - duplicates - rejected);
+    const summaryContainer = document.getElementById('analysis-summary-badges');
 
-    const elTotal = document.getElementById('res-total');
-    const elSuc = document.getElementById('res-success');
-    const elErr = document.getElementById('res-errors');
-    const elDup = document.getElementById('res-duplicates');
-    const elUnc = document.getElementById('res-unchanged');
-    if (elTotal) elTotal.innerText = total;
-    if (elSuc) elSuc.innerText = inserted + updated;
-    if (elErr) elErr.innerText = rejected;
-    if (elDup) elDup.innerText = duplicates;
-    if (elUnc) elUnc.innerText = unchanged;
+    if (this.uploadMode === 'completed') {
+      const total = data.totalProcessed || 0;
+      const matchedActive = data.matchedActive || 0;
+      const alreadyCompleted = data.alreadyCompleted || 0;
+      const newCompleted = data.newCompleted || 0;
+      const duplicates = data.duplicates || 0;
+      const invalid = data.invalid || 0;
 
-    const listTbody = document.getElementById('validation-results-tbody');
-    if (listTbody) {
-      let html = '';
+      if (summaryContainer) {
+        summaryContainer.innerHTML = `
+          <div class="align-center d-flex gap-2">
+            <span class="badge-custom badge-neutral" style="font-size:13px; font-weight:700;">${total}</span>
+            <span class="text-xs text-secondary">Rows Parsed</span>
+          </div>
+          <div class="align-center d-flex gap-2">
+            <span class="badge-custom badge-warning" style="font-size:13px; font-weight:700; background: rgba(245, 158, 11, 0.1); color: rgb(217, 119, 6);">${matchedActive}</span>
+            <span class="text-xs text-secondary">Rows to Move</span>
+          </div>
+          <div class="align-center d-flex gap-2">
+            <span class="badge-custom" style="font-size:13px; font-weight:700; background: rgba(59, 130, 246, 0.1); color: rgb(37, 99, 235);">${alreadyCompleted}</span>
+            <span class="text-xs text-secondary">Already Completed</span>
+          </div>
+          <div class="align-center d-flex gap-2">
+            <span class="badge-custom badge-success" style="font-size:13px; font-weight:700;">${newCompleted}</span>
+            <span class="text-xs text-secondary">New Completed</span>
+          </div>
+          <div class="align-center d-flex gap-2">
+            <span class="badge-custom badge-danger" style="font-size:13px; font-weight:700; opacity: 0.85;">${duplicates}</span>
+            <span class="text-xs text-secondary">Duplicates</span>
+          </div>
+          <div class="align-center d-flex gap-2">
+            <span class="badge-custom badge-danger" style="font-size:13px; font-weight:700;">${invalid}</span>
+            <span class="text-xs text-secondary">Invalid Rows</span>
+          </div>
+        `;
+      }
 
-      // 1. Render rejected rows first if there are any errors
-      if (data.rejected && data.rejected.length > 0) {
-        data.rejected.forEach(err => {
+      const listTbody = document.getElementById('validation-results-tbody');
+      if (listTbody) {
+        let html = '';
+
+        if (data.rejected && data.rejected.length > 0) {
+          data.rejected.forEach(err => {
+            html += `
+              <tr class="table-danger" style="background: rgba(220,38,38,0.05);">
+                <td><span class="fw-semibold text-danger">Excel Row ${err.row}</span></td>
+                <td><code class="text-danger">${err.code || 'N/A'}</code></td>
+                <td>${err.name || 'N/A'}</td>
+                <td><span class="badge-custom badge-danger">Validation Error</span></td>
+                <td class="text-danger fw-medium">${err.reason} (Row Rejected)</td>
+              </tr>
+            `;
+          });
+        }
+
+        if (matchedActive > 0) {
           html += `
-            <tr class="table-danger" style="background: rgba(220,38,38,0.05);">
-              <td><span class="fw-semibold text-danger">Excel Row ${err.row}</span></td>
-              <td><code class="text-danger">${err.code}</code></td>
-              <td>${err.name}</td>
-              <td><span class="badge-custom badge-danger">Validation Error</span></td>
-              <td class="text-danger fw-medium">${err.reason} (Row Rejected)</td>
+            <tr class="table-warning" style="background: rgba(245, 158, 11, 0.03);">
+              <td>All Locations / Row: Multiple</td>
+              <td>Multiple</td>
+              <td><strong>${matchedActive} apprentices</strong></td>
+              <td><span class="badge-custom badge-warning">Matched Active</span></td>
+              <td>Will be removed from Active and migrated to Completed registry.</td>
             </tr>
           `;
-        });
+        }
+
+        if (alreadyCompleted > 0) {
+          html += `
+            <tr class="table-info" style="background: rgba(59,130,246,0.03);">
+              <td>All Locations / Row: Multiple</td>
+              <td>Multiple</td>
+              <td><strong>${alreadyCompleted} apprentices</strong></td>
+              <td><span class="badge-custom" style="background: rgba(59, 130, 246, 0.1); color: rgb(37, 99, 235);">Already Completed</span></td>
+              <td>Exists in Completed sheet. Profile updated (completion info untouched unless Overwrite is checked).</td>
+            </tr>
+          `;
+        }
+
+        if (newCompleted > 0) {
+          html += `
+            <tr class="table-success" style="background: rgba(16,185,129,0.03);">
+              <td>All Locations / Row: Multiple</td>
+              <td>Multiple</td>
+              <td><strong>${newCompleted} apprentices</strong></td>
+              <td><span class="badge-custom badge-success">New Completed</span></td>
+              <td>Does not exist in DB. Will be inserted directly into Completed registry.</td>
+            </tr>
+          `;
+        }
+
+        if (duplicates > 0) {
+          html += `
+            <tr class="table-danger" style="background: rgba(220,38,38,0.02);">
+              <td>All Locations / Row: Multiple</td>
+              <td>Multiple</td>
+              <td><strong>${duplicates} rows</strong></td>
+              <td><span class="badge-custom badge-danger" style="opacity:0.85;">Duplicate Row</span></td>
+              <td>Duplicate occurrences in uploaded Excel batch. First occurrence processed, others skipped.</td>
+            </tr>
+          `;
+        }
+
+        if (html === '') {
+          html = `<tr><td colspan="5" class="text-center text-muted py-4">No records were processed.</td></tr>`;
+        }
+        listTbody.innerHTML = html;
       }
 
-      // 2. Render summary of inserted and updated
-      if (inserted > 0) {
-        html += `
-          <tr class="table-success">
-            <td>All Locations / Row: Multiple</td>
-            <td>Multiple</td>
-            <td><strong>${inserted} apprentices</strong></td>
-            <td><span class="badge-custom badge-success">Inserted</span></td>
-            <td>Added as new active apprentices in the database.</td>
-          </tr>
+    } else {
+      const inserted = data.inserted || 0;
+      const updated = data.updated || 0;
+      const total = data.totalProcessed || (inserted + updated);
+      const rejected = data.rejected ? data.rejected.length : 0;
+      const duplicates = data.duplicatesRemoved || 0;
+      const unchanged = Math.max(0, total - inserted - updated - duplicates - rejected);
+
+      if (summaryContainer) {
+        summaryContainer.innerHTML = `
+          <div class="align-center d-flex gap-2">
+            <span class="badge-custom badge-neutral" id="res-total" style="font-size:13px; font-weight:700;">${total}</span>
+            <span class="text-xs text-secondary">Processed</span>
+          </div>
+          <div class="align-center d-flex gap-2">
+            <span class="badge-custom badge-success" id="res-success" style="font-size:13px; font-weight:700;">${inserted + updated}</span>
+            <span class="text-xs text-secondary">Success Records</span>
+          </div>
+          <div class="align-center d-flex gap-2">
+            <span class="badge-custom badge-danger" id="res-errors" style="font-size:13px; font-weight:700;">${rejected}</span>
+            <span class="text-xs text-secondary">Failed Rows</span>
+          </div>
+          <div class="align-center d-flex gap-2">
+            <span class="badge-custom badge-warning" id="res-duplicates" style="font-size:13px; font-weight:700;">${duplicates}</span>
+            <span class="text-xs text-secondary">Duplicates Detected</span>
+          </div>
+          <div class="align-center d-flex gap-2">
+            <span class="badge-custom" id="res-unchanged" style="font-size:13px; font-weight:700; background: rgba(59, 130, 246, 0.1); color: rgb(37, 99, 235);">${unchanged}</span>
+            <span class="text-xs text-secondary">Unchanged</span>
+          </div>
         `;
       }
 
-      if (updated > 0) {
-        html += `
-          <tr class="table-warning">
-            <td>All Locations / Row: Multiple</td>
-            <td>Multiple</td>
-            <td><strong>${updated} apprentices</strong></td>
-            <td><span class="badge-custom badge-warning">Updated</span></td>
-            <td>Demographics updated. Manual tracking & remarks preserved.</td>
-          </tr>
-        `;
+      const listTbody = document.getElementById('validation-results-tbody');
+      if (listTbody) {
+        let html = '';
+        if (data.rejected && data.rejected.length > 0) {
+          data.rejected.forEach(err => {
+            html += `
+              <tr class="table-danger" style="background: rgba(220,38,38,0.05);">
+                <td><span class="fw-semibold text-danger">Excel Row ${err.row}</span></td>
+                <td><code class="text-danger">${err.code}</code></td>
+                <td>${err.name}</td>
+                <td><span class="badge-custom badge-danger">Validation Error</span></td>
+                <td class="text-danger fw-medium">${err.reason} (Row Rejected)</td>
+              </tr>
+            `;
+          });
+        }
+        if (inserted > 0) {
+          html += `
+            <tr class="table-success">
+              <td>All Locations / Row: Multiple</td>
+              <td>Multiple</td>
+              <td><strong>${inserted} apprentices</strong></td>
+              <td><span class="badge-custom badge-success">Inserted</span></td>
+              <td>Added as new active apprentices in the database.</td>
+            </tr>
+          `;
+        }
+        if (updated > 0) {
+          html += `
+            <tr class="table-warning">
+              <td>All Locations / Row: Multiple</td>
+              <td>Multiple</td>
+              <td><strong>${updated} apprentices</strong></td>
+              <td><span class="badge-custom badge-warning">Updated</span></td>
+              <td>Demographics updated. Manual tracking & remarks preserved.</td>
+            </tr>
+          `;
+        }
+        if (unchanged > 0) {
+          html += `
+            <tr class="table-info" style="background: rgba(59,130,246,0.02);">
+              <td>All Locations / Row: Multiple</td>
+              <td>Multiple</td>
+              <td><strong>${unchanged} apprentices</strong></td>
+              <td><span class="badge-custom" style="background: rgba(59, 130, 246, 0.1); color: rgb(37, 99, 235);">Unchanged</span></td>
+              <td>No demographic or status changes detected. Record is up to date.</td>
+            </tr>
+          `;
+        }
+        if (html === '') {
+          html = `<tr><td colspan="5" class="text-center text-muted py-4">No records were processed.</td></tr>`;
+        }
+        listTbody.innerHTML = html;
       }
-
-      if (unchanged > 0) {
-        html += `
-          <tr class="table-info" style="background: rgba(59,130,246,0.02);">
-            <td>All Locations / Row: Multiple</td>
-            <td>Multiple</td>
-            <td><strong>${unchanged} apprentices</strong></td>
-            <td><span class="badge-custom" style="background: rgba(59, 130, 246, 0.1); color: rgb(37, 99, 235);">Unchanged</span></td>
-            <td>No demographic or status changes detected. Record is up to date.</td>
-          </tr>
-        `;
-      }
-
-      if (html === '') {
-        html = `<tr><td colspan="5" class="text-center text-muted py-4">No records were processed.</td></tr>`;
-      }
-
-      listTbody.innerHTML = html;
     }
 
     const confirmBtn = document.getElementById('btn-confirm-import');
@@ -2495,9 +2637,9 @@ const ExcelUploadPage = {
 
     if (isConfirmed) {
       if (confirmBtn) {
-        confirmBtn.innerHTML = 'View Active Apprentices';
+        confirmBtn.innerHTML = this.uploadMode === 'completed' ? 'View Completed Registry' : 'View Active Apprentices';
         confirmBtn.onclick = () => {
-          window.location.href = 'apprentices.html';
+          window.location.href = this.uploadMode === 'completed' ? 'apprentices.html?type=completed' : 'apprentices.html?type=active';
         };
       }
       if (cancelBtn) {
@@ -2505,13 +2647,183 @@ const ExcelUploadPage = {
       }
     } else {
       if (confirmBtn) {
-        confirmBtn.innerHTML = '<i class="fas fa-check-double"></i> Confirm & Import Records';
-        confirmBtn.onclick = () => this.commitImport();
+        confirmBtn.innerHTML = this.uploadMode === 'completed'
+          ? '<i class="fas fa-graduation-cap"></i> Configure Completion & Sync'
+          : '<i class="fas fa-check-double"></i> Confirm & Import Records';
+
+        confirmBtn.onclick = () => {
+          if (this.uploadMode === 'completed') {
+            this.openCompletionConfigModal();
+          } else {
+            this.commitImport();
+          }
+        };
       }
       if (cancelBtn) {
         cancelBtn.style.display = 'inline-flex';
         cancelBtn.onclick = () => window.location.reload();
       }
+    }
+  },
+
+  openCompletionConfigModal() {
+    if (this.dryRunTimestamp && (Date.now() - this.dryRunTimestamp) > 10 * 60 * 1000) {
+      Toast.error('Validation Expired', 'Your validation session has expired. Please re-upload the spreadsheet file.', 5000);
+      return;
+    }
+
+    const compByDiv = document.getElementById('config-completed-by');
+    const compDateDiv = document.getElementById('config-completion-date');
+    if (compByDiv) {
+      let currentUserName = 'Super HR';
+      try {
+        const token = localStorage.getItem('pgp_token');
+        if (token) {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          currentUserName = payload.name || 'Super HR';
+        }
+      } catch (e) {}
+      compByDiv.innerText = `Super HR Admin (${currentUserName})`;
+    }
+    if (compDateDiv) {
+      compDateDiv.innerText = new Date().toISOString().split('T')[0];
+    }
+
+    const reasonSelect = document.getElementById('config-completion-reason');
+    const otherGroup = document.getElementById('config-other-reason-group');
+    if (reasonSelect && otherGroup) {
+      reasonSelect.value = '';
+      otherGroup.style.display = 'none';
+      reasonSelect.onchange = (e) => {
+        if (e.target.value === 'Other') {
+          otherGroup.style.display = 'block';
+          document.getElementById('config-other-reason').setAttribute('required', 'true');
+        } else {
+          otherGroup.style.display = 'none';
+          document.getElementById('config-other-reason').removeAttribute('required');
+        }
+      };
+    }
+
+    const remarksTextarea = document.getElementById('config-completion-remarks');
+    if (remarksTextarea) remarksTextarea.value = '';
+    const overwriteCheck = document.getElementById('config-overwrite-completion');
+    if (overwriteCheck) overwriteCheck.checked = false;
+
+    ModalManager.show('modal-completion-config');
+
+    const confirmBtn = document.getElementById('btn-modal-confirm-sync');
+    if (confirmBtn) {
+      confirmBtn.onclick = () => this.commitCompletedSync();
+    }
+  },
+
+  async commitCompletedSync() {
+    const reasonSelect = document.getElementById('config-completion-reason');
+    const otherInput = document.getElementById('config-other-reason');
+    const remarksTextarea = document.getElementById('config-completion-remarks');
+    const overwriteCheck = document.getElementById('config-overwrite-completion');
+
+    const reason = reasonSelect ? reasonSelect.value : '';
+    const otherReason = otherInput ? otherInput.value : '';
+    const remarks = remarksTextarea ? remarksTextarea.value : '';
+    const overwriteCompletion = overwriteCheck ? overwriteCheck.checked : false;
+
+    if (!reason) {
+      Toast.error('Required Field', 'Please select a completion reason.');
+      return;
+    }
+    if (reason === 'Other' && !otherReason.trim()) {
+      Toast.error('Required Field', 'Please enter other completion reason.');
+      return;
+    }
+
+    ModalManager.hide('modal-completion-config');
+
+    const confirmBtn = document.getElementById('btn-confirm-import');
+    const cancelBtn = document.getElementById('btn-cancel-import');
+    if (confirmBtn) {
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Synchronizing...';
+    }
+    if (cancelBtn) cancelBtn.disabled = true;
+
+    const backendUrl = AppDB.getBackendUrl();
+    const token = AppDB.getToken();
+
+    try {
+      const response = await fetch(`${backendUrl}/api/upload/completed?dryRun=false`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({
+          records: this.parsedRecords,
+          fileName: this.selectedFile.name,
+          completionReason: reason,
+          otherCompletionReason: otherReason,
+          completionRemarks: remarks,
+          overwriteCompletion: overwriteCompletion
+        })
+      });
+
+      const resData = await response.json();
+
+      if (!response.ok || !resData.success) {
+        throw new Error(resData.error || 'Synchronization failed on server');
+      }
+
+      if (confirmBtn) confirmBtn.disabled = false;
+      if (cancelBtn) cancelBtn.disabled = false;
+
+      const total = resData.totalProcessed || 0;
+      const moved = resData.moved || 0;
+      const inserted = resData.inserted || 0;
+      const updated = resData.updated || 0;
+      const skipped = resData.skipped || 0;
+      const failed = resData.failed || 0;
+
+      ModalManager.confirm({
+        title: 'Sync Completed',
+        message: `Database synchronization completed successfully!\n\n• Rows Parsed: ${total}\n• Rows Moved (Active -> Completed): ${moved}\n• Rows Updated (CASE B): ${updated}\n• Rows Inserted (CASE C): ${inserted}\n• Rows Skipped (Duplicate upload): ${skipped}\n• Rows Failed (Invalid rows): ${failed}`,
+        iconType: 'success',
+        confirmText: 'View Completed Registry',
+        cancelText: 'Close',
+        onConfirm: () => {
+          window.location.href = 'apprentices.html?type=completed';
+        },
+        onCancel: async () => {
+          this.renderLiveResults(resData, true);
+          
+          AppDB.invalidateCache();
+          await AppDB.init();
+          await this.loadUploadHistory();
+
+          window.dispatchEvent(new CustomEvent('sync-completed'));
+          if (typeof DashboardPage !== 'undefined' && typeof DashboardPage.init === 'function') {
+            DashboardPage.init();
+          }
+          if (typeof ApprenticesPage !== 'undefined' && typeof ApprenticesPage.init === 'function') {
+            ApprenticesPage.init();
+          }
+          if (typeof AnalyticsPage !== 'undefined' && typeof AnalyticsPage.init === 'function') {
+            AnalyticsPage.init();
+          }
+          if (typeof ReportsPage !== 'undefined' && typeof ReportsPage.init === 'function') {
+            ReportsPage.init();
+          }
+        }
+      });
+
+    } catch (err) {
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="fas fa-graduation-cap"></i> Configure Completion & Sync';
+      }
+      if (cancelBtn) cancelBtn.disabled = false;
+      Toast.error('Sync Failed', err.message || 'Could not synchronize data to backend.');
+      console.error('ExcelUploadPage sync error:', err);
     }
   },
 

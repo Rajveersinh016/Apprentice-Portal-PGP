@@ -1456,6 +1456,522 @@ async function getUploadAuditLogs() {
   }
 }
 
+async function validateCompletedApprentices(incomingRecords) {
+  const activeRaw = await getActiveApprentices();
+  const completedRaw = await getCompletedApprentices();
+
+  const activeHeaders = dataCache.active.headers || [];
+
+  const cleanNormalized = (val) => {
+    if (val === undefined || val === null) return "";
+    return String(val).trim().toLowerCase().replace(/\s+/g, '');
+  };
+
+  const getConcatKeyNormalized = (name, location, department) => {
+    return cleanNormalized(name) + '|' + cleanNormalized(location) + '|' + cleanNormalized(department);
+  };
+
+  const activeCodeMap = new Map();
+  const activeContractMap = new Map();
+  const activeEnrollmentMap = new Map();
+  const activeConcatMap = new Map();
+
+  activeRaw.forEach(r => {
+    const code = cleanNormalized(r["Employee Code"]);
+    if (code) activeCodeMap.set(code, r);
+    const contract = cleanNormalized(r["Employee Contract ID"]);
+    if (contract && contract !== "pending" && contract !== "null") activeContractMap.set(contract, r);
+    const enrollment = cleanNormalized(r["Portal Enrollment Number"]);
+    if (enrollment && enrollment !== "pending" && enrollment !== "null") activeEnrollmentMap.set(enrollment, r);
+    const concat = getConcatKeyNormalized(r["Full Name"], r["Location"], r["Department"]);
+    if (concat) activeConcatMap.set(concat, r);
+  });
+
+  const completedCodeMap = new Map();
+  const completedContractMap = new Map();
+  const completedEnrollmentMap = new Map();
+  const completedConcatMap = new Map();
+
+  completedRaw.forEach(r => {
+    const code = cleanNormalized(r["Employee Code"]);
+    if (code) completedCodeMap.set(code, r);
+    const contract = cleanNormalized(r["Employee Contract ID"]);
+    if (contract && contract !== "pending" && contract !== "null") completedContractMap.set(contract, r);
+    const enrollment = cleanNormalized(r["Portal Enrollment Number"]);
+    if (enrollment && enrollment !== "pending" && enrollment !== "null") completedEnrollmentMap.set(enrollment, r);
+    const concat = getConcatKeyNormalized(r["Full Name"], r["Location"], r["Department"]);
+    if (concat) completedConcatMap.set(concat, r);
+  });
+
+  let matchedActive = 0;
+  let alreadyCompleted = 0;
+  let newCompleted = 0;
+  let duplicates = 0;
+  let invalid = 0;
+  const rejectedList = [];
+  const seenCodesInBatch = new Set();
+
+  incomingRecords.forEach((incoming, idx) => {
+    const resolved = {};
+    Object.keys(incoming).forEach(k => {
+      if (k.startsWith('__')) return;
+      const std = getStandardHeaderName(k, activeHeaders);
+      if (!std) return;
+      const val = incoming[k];
+      const cleanVal = val !== undefined && val !== null ? String(val).trim() : "";
+      if (resolved[std] === undefined || resolved[std] === "") {
+        resolved[std] = val;
+      } else if (cleanVal !== "") {
+        resolved[std] = val;
+      }
+    });
+
+    const code = resolved["Employee Code"] ? String(resolved["Employee Code"]).trim() : "";
+    const name = resolved["Full Name"] ? String(resolved["Full Name"]).trim() : "";
+    const location = resolved["Location"] ? String(resolved["Location"]).trim() : "";
+    const department = resolved["Department"] ? String(resolved["Department"]).trim() : "";
+    const contract = resolved["Employee Contract ID"] ? String(resolved["Employee Contract ID"]).trim() : "";
+    const enrollment = resolved["Portal Enrollment Number"] ? String(resolved["Portal Enrollment Number"]).trim() : "";
+
+    const normCode = cleanNormalized(code);
+    const normContract = cleanNormalized(contract);
+    const normEnrollment = cleanNormalized(enrollment);
+    const normConcat = getConcatKeyNormalized(name, location, department);
+
+    const excelRow = incoming.__rowNum || (idx + 3);
+
+    if (!code || !name) {
+      invalid++;
+      rejectedList.push({
+        row: excelRow,
+        code: code || "N/A",
+        name: name || "N/A",
+        reason: !code ? "Missing Employee Code" : "Missing Full Name / Employee Name"
+      });
+      return;
+    }
+
+    if (seenCodesInBatch.has(normCode)) {
+      duplicates++;
+      return;
+    }
+    seenCodesInBatch.add(normCode);
+
+    let matchActive = activeCodeMap.get(normCode);
+    if (!matchActive && normContract && normContract !== "pending" && normContract !== "null") {
+      matchActive = activeContractMap.get(normContract);
+    }
+    if (!matchActive && normEnrollment && normEnrollment !== "pending" && normEnrollment !== "null") {
+      matchActive = activeEnrollmentMap.get(normEnrollment);
+    }
+    if (!matchActive && normConcat) {
+      matchActive = activeConcatMap.get(normConcat);
+    }
+
+    let matchCompleted = completedCodeMap.get(normCode);
+    if (!matchCompleted && normContract && normContract !== "pending" && normContract !== "null") {
+      matchCompleted = completedContractMap.get(normContract);
+    }
+    if (!matchCompleted && normEnrollment && normEnrollment !== "pending" && normEnrollment !== "null") {
+      matchCompleted = completedEnrollmentMap.get(normEnrollment);
+    }
+    if (!matchCompleted && normConcat) {
+      matchCompleted = completedConcatMap.get(normConcat);
+    }
+
+    if (matchActive) {
+      matchedActive++;
+    } else if (matchCompleted) {
+      alreadyCompleted++;
+    } else {
+      newCompleted++;
+    }
+  });
+
+  return {
+    totalProcessed: incomingRecords.length,
+    matchedActive,
+    alreadyCompleted,
+    newCompleted,
+    duplicates,
+    invalid,
+    rejected: rejectedList
+  };
+}
+
+async function syncCompletedApprentices(options) {
+  const { records, fileName, completionReason, otherCompletionReason, completionRemarks, overwriteCompletion, updatedBy, user } = options;
+  const startTime = Date.now();
+
+  const release = await dbMutex.acquire();
+  try {
+    const client = getSheetsClient();
+
+    let activeRaw = await getActiveApprentices();
+    let completedRaw = await getCompletedApprentices();
+
+    const activeHeaders = dataCache.active.headers || [];
+    let completedHeaders = dataCache.completed.headers || [];
+
+    const missingCompHeaders = [];
+    if (!completedHeaders.includes("Completion Date")) missingCompHeaders.push("Completion Date");
+    if (!completedHeaders.includes("Completed By")) missingCompHeaders.push("Completed By");
+    if (!completedHeaders.includes("Completion Reason")) missingCompHeaders.push("Completion Reason");
+    if (!completedHeaders.includes("Other Completion Reason")) missingCompHeaders.push("Other Completion Reason");
+    if (!completedHeaders.includes("Completion Remarks")) missingCompHeaders.push("Completion Remarks");
+
+    if (missingCompHeaders.length > 0) {
+      completedHeaders = [...completedHeaders, ...missingCompHeaders];
+      await executeWithRetry(() => client.spreadsheets.values.update({
+        spreadsheetId,
+        range: `Completed_Apprentices!A1:${getColumnLetter(completedHeaders.length)}1`,
+        valueInputOption: 'RAW',
+        requestBody: {
+          values: [completedHeaders]
+        }
+      }));
+    }
+
+    const cleanNormalized = (val) => {
+      if (val === undefined || val === null) return "";
+      return String(val).trim().toLowerCase().replace(/\s+/g, '');
+    };
+
+    const getConcatKeyNormalized = (name, location, department) => {
+      return cleanNormalized(name) + '|' + cleanNormalized(location) + '|' + cleanNormalized(department);
+    };
+
+    const activeCodeMap = new Map();
+    const activeContractMap = new Map();
+    const activeEnrollmentMap = new Map();
+    const activeConcatMap = new Map();
+
+    activeRaw.forEach(r => {
+      const code = cleanNormalized(r["Employee Code"]);
+      if (code) activeCodeMap.set(code, r);
+      const contract = cleanNormalized(r["Employee Contract ID"]);
+      if (contract && contract !== "pending" && contract !== "null") activeContractMap.set(contract, r);
+      const enrollment = cleanNormalized(r["Portal Enrollment Number"]);
+      if (enrollment && enrollment !== "pending" && enrollment !== "null") activeEnrollmentMap.set(enrollment, r);
+      const concat = getConcatKeyNormalized(r["Full Name"], r["Location"], r["Department"]);
+      if (concat) activeConcatMap.set(concat, r);
+    });
+
+    const completedCodeMap = new Map();
+    const completedContractMap = new Map();
+    const completedEnrollmentMap = new Map();
+    const completedConcatMap = new Map();
+
+    completedRaw.forEach(r => {
+      const code = cleanNormalized(r["Employee Code"]);
+      if (code) completedCodeMap.set(code, r);
+      const contract = cleanNormalized(r["Employee Contract ID"]);
+      if (contract && contract !== "pending" && contract !== "null") completedContractMap.set(contract, r);
+      const enrollment = cleanNormalized(r["Portal Enrollment Number"]);
+      if (enrollment && enrollment !== "pending" && enrollment !== "null") completedEnrollmentMap.set(enrollment, r);
+      const concat = getConcatKeyNormalized(r["Full Name"], r["Location"], r["Department"]);
+      if (concat) completedConcatMap.set(concat, r);
+    });
+
+    let movedCount = 0;
+    let insertedCount = 0;
+    let updatedCount = 0;
+    let skippedCount = 0;
+    let failedCount = 0;
+
+    const profileLogRows = [];
+    const seenCodesInBatch = new Set();
+    const nowStr = new Date().toISOString().split('T')[0];
+    const completedByVal = `${user.role === 'Super HR' ? 'Super HR Admin' : user.location + ' HR'} (${user.name})`;
+
+    const mergeDemographics = (existing, resolved) => {
+      const ignoreKeys = [
+        "Employee Code", "Record Status", "Updated By", "Updated Date",
+        "Completion Date", "Completed By", "Completion Reason", "Other Completion Reason", "Completion Remarks"
+      ];
+      let changed = false;
+      activeHeaders.forEach(h => {
+        if (ignoreKeys.includes(h)) return;
+        const newVal = resolved[h] !== undefined && resolved[h] !== null ? String(resolved[h]).trim() : "";
+        if (newVal !== "") {
+          const oldVal = existing[h] !== undefined && existing[h] !== null ? String(existing[h]).trim() : "";
+          if (oldVal !== newVal) {
+            existing[h] = newVal;
+            changed = true;
+          }
+        }
+      });
+      return changed;
+    };
+
+    records.forEach((incoming, idx) => {
+      const resolved = {};
+      Object.keys(incoming).forEach(k => {
+        if (k.startsWith('__')) return;
+        const std = getStandardHeaderName(k, activeHeaders);
+        if (!std) return;
+        const val = incoming[k];
+        const cleanVal = val !== undefined && val !== null ? String(val).trim() : "";
+        if (resolved[std] === undefined || resolved[std] === "") {
+          resolved[std] = val;
+        } else if (cleanVal !== "") {
+          resolved[std] = val;
+        }
+      });
+
+      const code = resolved["Employee Code"] ? String(resolved["Employee Code"]).trim() : "";
+      const name = resolved["Full Name"] ? String(resolved["Full Name"]).trim() : "";
+      const location = resolved["Location"] ? String(resolved["Location"]).trim() : "";
+      const department = resolved["Department"] ? String(resolved["Department"]).trim() : "";
+      const contract = resolved["Employee Contract ID"] ? String(resolved["Employee Contract ID"]).trim() : "";
+      const enrollment = resolved["Portal Enrollment Number"] ? String(resolved["Portal Enrollment Number"]).trim() : "";
+
+      const normCode = cleanNormalized(code);
+      const normContract = cleanNormalized(contract);
+      const normEnrollment = cleanNormalized(enrollment);
+      const normConcat = getConcatKeyNormalized(name, location, department);
+
+      if (!code || !name) {
+        failedCount++;
+        return;
+      }
+
+      if (seenCodesInBatch.has(normCode)) {
+        skippedCount++;
+        return;
+      }
+      seenCodesInBatch.add(normCode);
+
+      let matchActive = activeCodeMap.get(normCode);
+      if (!matchActive && normContract && normContract !== "pending" && normContract !== "null") {
+        matchActive = activeContractMap.get(normContract);
+      }
+      if (!matchActive && normEnrollment && normEnrollment !== "pending" && normEnrollment !== "null") {
+        matchActive = activeEnrollmentMap.get(normEnrollment);
+      }
+      if (!matchActive && normConcat) {
+        matchActive = activeConcatMap.get(normConcat);
+      }
+
+      let matchCompleted = completedCodeMap.get(normCode);
+      if (!matchCompleted && normContract && normContract !== "pending" && normContract !== "null") {
+        matchCompleted = completedContractMap.get(normContract);
+      }
+      if (!matchCompleted && normEnrollment && normEnrollment !== "pending" && normEnrollment !== "null") {
+        matchCompleted = completedEnrollmentMap.get(normEnrollment);
+      }
+      if (!matchCompleted && normConcat) {
+        matchCompleted = completedConcatMap.get(normConcat);
+      }
+
+      if (matchActive) {
+        const recordCode = matchActive["Employee Code"] || code;
+        const recordName = matchActive["Full Name"] || name;
+
+        const completedRecord = {};
+        completedHeaders.forEach(h => {
+          completedRecord[h] = matchActive[h] !== undefined ? matchActive[h] : "";
+        });
+
+        mergeDemographics(completedRecord, resolved);
+
+        completedRecord["Record Status"] = "Completed";
+        completedRecord["Completion Date"] = nowStr;
+        completedRecord["Completed By"] = completedByVal;
+        completedRecord["Completion Reason"] = completionReason;
+        completedRecord["Other Completion Reason"] = otherCompletionReason || "";
+        completedRecord["Completion Remarks"] = completionRemarks || "";
+        completedRecord["Updated By"] = updatedBy;
+        completedRecord["Updated Date"] = nowStr;
+
+        completedRaw.push(completedRecord);
+
+        activeRaw = activeRaw.filter(r => r !== matchActive);
+
+        activeCodeMap.delete(cleanNormalized(matchActive["Employee Code"]));
+        if (matchActive["Employee Contract ID"]) activeContractMap.delete(cleanNormalized(matchActive["Employee Contract ID"]));
+        if (matchActive["Portal Enrollment Number"]) activeEnrollmentMap.delete(cleanNormalized(matchActive["Portal Enrollment Number"]));
+        activeConcatMap.delete(getConcatKeyNormalized(matchActive["Full Name"], matchActive["Location"], matchActive["Department"]));
+
+        profileLogRows.push([
+          new Date().toISOString(),
+          recordCode,
+          recordName,
+          updatedBy,
+          "Bulk Completion Upload",
+          `Previous Status: Active -> New Status: Completed; Completion Reason: ${completionReason}; Completed By: ${completedByVal}`
+        ]);
+
+        movedCount++;
+      } else if (matchCompleted) {
+        const recordCode = matchCompleted["Employee Code"] || code;
+        const recordName = matchCompleted["Full Name"] || name;
+
+        mergeDemographics(matchCompleted, resolved);
+
+        const dateEmpty = !matchCompleted["Completion Date"] || String(matchCompleted["Completion Date"]).trim() === "";
+        const reasonEmpty = !matchCompleted["Completion Reason"] || String(matchCompleted["Completion Reason"]).trim() === "";
+
+        if (overwriteCompletion || dateEmpty || reasonEmpty) {
+          matchCompleted["Completion Date"] = nowStr;
+          matchCompleted["Completed By"] = completedByVal;
+          matchCompleted["Completion Reason"] = completionReason;
+          matchCompleted["Other Completion Reason"] = otherCompletionReason || "";
+          matchCompleted["Completion Remarks"] = completionRemarks || "";
+        }
+
+        matchCompleted["Updated By"] = updatedBy;
+        matchCompleted["Updated Date"] = nowStr;
+
+        profileLogRows.push([
+          new Date().toISOString(),
+          recordCode,
+          recordName,
+          updatedBy,
+          "Bulk Completion Upload",
+          `Previous Status: Completed -> New Status: Completed (Fields Updated); Overwritten: ${overwriteCompletion}`
+        ]);
+
+        updatedCount++;
+      } else {
+        const newRecord = {};
+        completedHeaders.forEach(h => {
+          newRecord[h] = resolved[h] !== undefined && resolved[h] !== null ? String(resolved[h]).trim() : "";
+        });
+
+        newRecord["Employee Code"] = code;
+        newRecord["Full Name"] = name;
+        newRecord["Record Status"] = "Completed";
+        newRecord["Completion Date"] = nowStr;
+        newRecord["Completed By"] = completedByVal;
+        newRecord["Completion Reason"] = completionReason;
+        newRecord["Other Completion Reason"] = otherCompletionReason || "";
+        newRecord["Completion Remarks"] = completionRemarks || "";
+        newRecord["Updated By"] = updatedBy;
+        newRecord["Updated Date"] = nowStr;
+
+        if (!newRecord["Location"]) newRecord["Location"] = "Halol";
+        if (!newRecord["Department"]) newRecord["Department"] = "HR";
+        if (!newRecord["Sex"]) newRecord["Sex"] = "Male";
+        if (!newRecord["Age"]) newRecord["Age"] = "22";
+        if (!newRecord["Joining Date"]) newRecord["Joining Date"] = nowStr;
+
+        completedRaw.push(newRecord);
+
+        profileLogRows.push([
+          new Date().toISOString(),
+          code,
+          name,
+          updatedBy,
+          "Bulk Completion Upload",
+          `Previous Status: N/A -> New Status: Completed; Completion Reason: ${completionReason}; Completed By: ${completedByVal}`
+        ]);
+
+        insertedCount++;
+      }
+    });
+
+    const finalCompletedCodes = new Set(completedRaw.map(c => cleanNormalized(c["Employee Code"])).filter(Boolean));
+    activeRaw = activeRaw.filter(a => {
+      const code = cleanNormalized(a["Employee Code"]);
+      if (code && finalCompletedCodes.has(code)) {
+        console.log(`[DEBUG SYNC] Duplicate Protection triggered. Removing code ${a["Employee Code"]} from Active registry.`);
+        return false;
+      }
+      return true;
+    });
+
+    const activeValues = objectsToValues(activeRaw, activeHeaders);
+    const completedValues = objectsToValues(completedRaw, completedHeaders);
+    const SHEET_ROW_SAFE_LIMIT = 5000;
+
+    await executeWithRetry(() => client.spreadsheets.values.update({
+      spreadsheetId,
+      range: `Active_Apprentices!A1:${getColumnLetter(activeHeaders.length)}${activeRaw.length + 1}`,
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: activeValues
+      }
+    }));
+
+    const activeClearStart = activeRaw.length + 2;
+    if (activeClearStart <= SHEET_ROW_SAFE_LIMIT) {
+      await executeWithRetry(() => client.spreadsheets.values.clear({
+        spreadsheetId,
+        range: `Active_Apprentices!A${activeClearStart}:ZZ${SHEET_ROW_SAFE_LIMIT}`
+      }));
+    }
+
+    await executeWithRetry(() => client.spreadsheets.values.update({
+      spreadsheetId,
+      range: `Completed_Apprentices!A1:${getColumnLetter(completedHeaders.length)}${completedRaw.length + 1}`,
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: completedValues
+      }
+    }));
+
+    const completedClearStart = completedRaw.length + 2;
+    if (completedClearStart <= SHEET_ROW_SAFE_LIMIT) {
+      await executeWithRetry(() => client.spreadsheets.values.clear({
+        spreadsheetId,
+        range: `Completed_Apprentices!A${completedClearStart}:ZZ${SHEET_ROW_SAFE_LIMIT}`
+      }));
+    }
+
+    if (profileLogRows.length > 0) {
+      await executeWithRetry(() => client.spreadsheets.values.append({
+        spreadsheetId,
+        range: 'Profile_Audit_Logs!A1',
+        valueInputOption: 'RAW',
+        insertDataOption: 'INSERT_ROWS',
+        requestBody: {
+          values: profileLogRows
+        }
+      }));
+    }
+
+    const duration = Date.now() - startTime;
+    const timeStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
+    const logRow = [
+      timeStr,
+      `${user.role} (${user.name})`,
+      fileName || "Unknown File",
+      insertedCount,
+      updatedCount,
+      failedCount,
+      skippedCount,
+      `Moved: ${movedCount}`,
+      duration + "ms"
+    ];
+
+    await executeWithRetry(() => client.spreadsheets.values.append({
+      spreadsheetId,
+      range: 'AuditLogs!A1',
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: {
+        values: [logRow]
+      }
+    }));
+
+    invalidateDataCache();
+    dataCache.uploadAuditLogs.data = null;
+
+    return {
+      totalProcessed: records.length,
+      moved: movedCount,
+      inserted: insertedCount,
+      updated: updatedCount,
+      skipped: skippedCount,
+      failed: failedCount
+    };
+
+  } finally {
+    release();
+  }
+}
+
 module.exports = {
   getSheetsClient,
   getAllUsers,
@@ -1470,7 +1986,9 @@ module.exports = {
   ensureSheetsExist,
   getProfileAuditLogs,
   getUploadAuditLogs,
-  invalidateDataCache, // Exported for route-level cache invalidation
+  invalidateDataCache,
   executeWithRetry,
-  getCacheInfo
+  getCacheInfo,
+  validateCompletedApprentices,
+  syncCompletedApprentices
 };
