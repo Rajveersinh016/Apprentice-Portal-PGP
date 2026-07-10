@@ -189,13 +189,16 @@ router.put('/:code', authMiddleware, async (req, res) => {
     const activeRaw = await sheetsService.getActiveApprentices();
     let apprentice = activeRaw.find(r => String(r["Employee Code"]).trim() === String(code).trim());
 
+    let isCompleted = false;
     if (!apprentice) {
       const completedRaw = await sheetsService.getCompletedApprentices();
       const completedApprentice = completedRaw.find(r => String(r["Employee Code"]).trim() === String(code).trim());
       if (completedApprentice) {
-        return res.status(400).json({ success: false, error: 'Cannot edit profile. Completed apprentices are read-only.' });
+        apprentice = completedApprentice;
+        isCompleted = true;
+      } else {
+        return res.status(404).json({ success: false, error: 'This record was modified or removed by another user. Please refresh and try again.' });
       }
-      return res.status(404).json({ success: false, error: 'This record was modified or removed by another user. Please refresh and try again.' });
     }
 
     // 2. Enforce Location Security for Branch HR
@@ -220,6 +223,14 @@ router.put('/:code', authMiddleware, async (req, res) => {
       portalEnrollmentNumber: "Portal Enrollment Number",
       portalName: "Portal Name"
     };
+
+    if (isCompleted) {
+      stdFieldMap.completionDate = "Completion Date";
+      stdFieldMap.completedBy = "Completed By";
+      stdFieldMap.completionReason = "Completion Reason";
+      stdFieldMap.otherCompletionReason = "Other Completion Reason";
+      stdFieldMap.completionRemarks = "Completion Remarks";
+    }
 
     // Standard fields mapping
     Object.keys(fields).forEach(key => {

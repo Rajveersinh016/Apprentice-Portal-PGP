@@ -445,7 +445,7 @@
             </div>
           </div>
 
-          <!-- Program Completion Details Card (Read-only, shown for completed) -->
+          <!-- Program Completion Details Card (Read-only/Edit, shown for completed) -->
           <div class="card-custom" id="completion-details-card" style="display:none; background: rgba(5,150,105,0.02); border-color: rgba(5,150,105,0.2);">
             <div class="info-card-header" style="border-color: rgba(5,150,105,0.15);">
               <h3 class="info-card-title" style="color: #059669;"><i class="fas fa-check-circle"></i> Completion Information</h3>
@@ -453,23 +453,36 @@
             <div class="card-custom-body d-flex flex-column gap-4" style="padding: 20px 24px;">
               <div class="form-group-profile">
                 <label class="form-label" style="color: rgba(5,150,105,0.8);">Completion Date</label>
-                <div class="fw-semibold text-sm" id="val-completion-date" style="color: #059669;">-</div>
+                <div class="view-mode-only fw-semibold text-sm" id="val-completion-date" style="color: #059669;">-</div>
+                <input type="date" class="form-control-custom edit-mode-only" id="input-completion-date">
               </div>
               <div class="form-group-profile">
                 <label class="form-label" style="color: rgba(5,150,105,0.8);">Completed By</label>
-                <div class="fw-semibold text-sm" id="val-completed-by" style="color: #059669;">-</div>
+                <div class="view-mode-only fw-semibold text-sm" id="val-completed-by" style="color: #059669;">-</div>
+                <input type="text" class="form-control-custom edit-mode-only" id="input-completed-by">
               </div>
               <div class="form-group-profile">
                 <label class="form-label" style="color: rgba(5,150,105,0.8);">Completion Reason</label>
-                <div class="fw-semibold text-sm" id="val-completion-reason" style="color: #059669;">-</div>
+                <div class="view-mode-only fw-semibold text-sm" id="val-completion-reason" style="color: #059669;">-</div>
+                <select class="form-control-custom edit-mode-only" id="input-completion-reason" onchange="ApprenticeDetailPage.handleCompletionReasonChange(this)">
+                  <option value="Successfully Completed Apprenticeship">Successfully Completed Apprenticeship</option>
+                  <option value="Training Completed">Training Completed</option>
+                  <option value="Resigned">Resigned</option>
+                  <option value="Terminated">Terminated</option>
+                  <option value="Absconded">Absconded</option>
+                  <option value="Left Organization">Left Organization</option>
+                  <option value="Other">Other</option>
+                </select>
               </div>
               <div class="form-group-profile" id="group-other-reason" style="display: none;">
                 <label class="form-label" style="color: rgba(5,150,105,0.8);">Other Completion Reason</label>
-                <div class="fw-semibold text-sm" id="val-other-reason" style="color: #059669;">-</div>
+                <div class="view-mode-only fw-semibold text-sm" id="val-other-reason" style="color: #059669;">-</div>
+                <input type="text" class="form-control-custom edit-mode-only" id="input-other-reason">
               </div>
               <div class="form-group-profile">
                 <label class="form-label" style="color: rgba(5,150,105,0.8);">Completion Remarks</label>
-                <div class="fw-semibold text-sm" id="val-completion-remarks" style="color: #059669; white-space: pre-wrap;">-</div>
+                <div class="view-mode-only fw-semibold text-sm" id="val-completion-remarks" style="color: #059669; white-space: pre-wrap;">-</div>
+                <textarea class="form-control-custom edit-mode-only" id="input-completion-remarks" rows="3" style="height:auto; resize:none;"></textarea>
               </div>
             </div>
           </div>

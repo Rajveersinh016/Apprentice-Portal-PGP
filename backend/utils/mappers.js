@@ -28,6 +28,7 @@ function mapSheetToInternal(row, isCompleted) {
   // Dynamically attach any other fields from the spreadsheet row
   Object.keys(row).forEach(key => {
     if (key.startsWith('__')) return; // skip row number metadata
+    if (key === "Completion Details Finalized") return; // Exclude internal system fields
     if (!mapped.hasOwnProperty(key)) {
       mapped[key] = row[key];
     }

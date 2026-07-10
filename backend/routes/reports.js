@@ -382,6 +382,7 @@ router.post('/export', authMiddleware, async (req, res) => {
     if (!isSummaryReport) {
       const allHeadersSet = new Set([...activeHeaders, ...completedHeaders]);
       allHeadersSet.delete("__rowNum");
+      allHeadersSet.delete("Completion Details Finalized");
 
       const dbColumnsCount = allHeadersSet.size;
       let orderedHeaders = getOrderedHeaders(allHeadersSet);

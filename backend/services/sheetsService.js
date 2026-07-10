@@ -407,7 +407,8 @@ async function ensureSheetsExistInternal() {
         "Employee Code", "Full Name", "Location", "Department", "Joining Date", 
         "Sex", "Age", "Phone", "Email", "Address", "Remarks", 
         "Employee Contract ID", "Portal Enrollment Number", "Portal Name", 
-        "Completion Date", "Completed By", "Completion Reason", "Other Completion Reason", "Completion Remarks"
+        "Completion Date", "Completed By", "Completion Reason", "Other Completion Reason", "Completion Remarks",
+        "Completion Details Finalized"
       ] 
     },
     { name: 'AuditLogs', headers: [
@@ -654,16 +655,24 @@ async function updateApprentice(code, fields, updatedBy) {
 
     // Use cached data — fast if warm, fetches fresh if stale
     const activeRecords = await getActiveApprentices();
-    const existing = activeRecords.find(r => String(r["Employee Code"]).trim() === String(code).trim());
-    
+    let existing = activeRecords.find(r => String(r["Employee Code"]).trim() === String(code).trim());
+    let isCompleted = false;
+    let sheetName = "Active_Apprentices";
+    let headers = dataCache.active.headers || [];
+
     if (!existing) {
-      throw new Error(`Active apprentice with Employee Code ${code} not found.`);
+      const completedRecords = await getCompletedApprentices();
+      existing = completedRecords.find(r => String(r["Employee Code"]).trim() === String(code).trim());
+      if (!existing) {
+        throw new Error(`Apprentice with Employee Code ${code} not found.`);
+      }
+      isCompleted = true;
+      sheetName = "Completed_Apprentices";
+      headers = dataCache.completed.headers || [];
     }
 
     const rowNum = existing.__rowNum;
-    // Use cached headers — eliminates a separate header API call
-    const headers = dataCache.active.headers || [];
-    if (headers.length === 0) throw new Error('Could not determine Active_Apprentices column headers.');
+    if (headers.length === 0) throw new Error(`Could not determine ${sheetName} column headers.`);
 
     const nowStr = new Date().toISOString().split('T')[0];
     const oldRecord = { ...existing };
@@ -680,7 +689,7 @@ async function updateApprentice(code, fields, updatedBy) {
       }
     }
 
-    // Write to active apprentices sheet if fields actually changed
+    // Write to appropriate sheet if fields actually changed
     existing["Updated Date"] = nowStr;
     existing["Updated By"] = updatedBy;
 
@@ -688,7 +697,7 @@ async function updateApprentice(code, fields, updatedBy) {
 
     await executeWithRetry(() => client.spreadsheets.values.update({
       spreadsheetId,
-      range: `Active_Apprentices!A${rowNum}:${getColumnLetter(headers.length)}${rowNum}`,
+      range: `${sheetName}!A${rowNum}:${getColumnLetter(headers.length)}${rowNum}`,
       valueInputOption: 'RAW',
       requestBody: {
         values: [rowValues]
@@ -697,7 +706,16 @@ async function updateApprentice(code, fields, updatedBy) {
 
     if (changedFields.length > 0) {
       const changesText = changedFields.join('; ');
-      await logProfileEditInternal(client, code, existing["Full Name"] || existing["Employee Code"] || "", updatedBy, "Profile Update", changesText);
+      
+      let action = "Profile Update";
+      const isFinalized = String(existing["Completion Details Finalized"] || "").trim().toUpperCase() === "FINALIZED";
+      const completionFieldsChanged = changedFields.some(f => f.startsWith("Completion Reason:") || f.startsWith("Other Completion Reason:") || f.startsWith("Completion Remarks:") || f.startsWith("Completion Date:") || f.startsWith("Completed By:"));
+
+      if (isCompleted && isFinalized && completionFieldsChanged) {
+        action = "Manual Completion Details Updated";
+      }
+
+      await logProfileEditInternal(client, code, existing["Full Name"] || existing["Employee Code"] || "", updatedBy, action, changesText);
     }
 
     // Invalidate cache — next read will fetch fresh data
@@ -745,6 +763,7 @@ async function completeApprentice(code, completedBy, reason, otherReason, remark
       if (!completedHeaders.includes("Completion Reason")) missingCompHeaders.push("Completion Reason");
       if (!completedHeaders.includes("Other Completion Reason")) missingCompHeaders.push("Other Completion Reason");
       if (!completedHeaders.includes("Completion Remarks")) missingCompHeaders.push("Completion Remarks");
+      if (!completedHeaders.includes("Completion Details Finalized")) missingCompHeaders.push("Completion Details Finalized");
       
       if (missingCompHeaders.length > 0) {
         completedHeaders = [...completedHeaders, ...missingCompHeaders];
@@ -766,6 +785,7 @@ async function completeApprentice(code, completedBy, reason, otherReason, remark
       if (header === "Completion Reason") return reason || "";
       if (header === "Other Completion Reason") return otherReason || "";
       if (header === "Completion Remarks") return remarks || "";
+      if (header === "Completion Details Finalized") return "PENDING";
       return recordToMove[header] !== undefined ? recordToMove[header] : "";
     });
 
@@ -1304,6 +1324,9 @@ async function logProfileEditInternal(client, code, name, updatedBy, action, cha
       values: [values]
     }
   }));
+  // Invalidate audit log cache so the next read fetches fresh data
+  dataCache.audit.data = null;
+  dataCache.audit.ts = 0;
 }
 
 async function getProfileAuditLogs(code) {
@@ -1619,6 +1642,7 @@ async function syncCompletedApprentices(options) {
     if (!completedHeaders.includes("Completion Reason")) missingCompHeaders.push("Completion Reason");
     if (!completedHeaders.includes("Other Completion Reason")) missingCompHeaders.push("Other Completion Reason");
     if (!completedHeaders.includes("Completion Remarks")) missingCompHeaders.push("Completion Remarks");
+    if (!completedHeaders.includes("Completion Details Finalized")) missingCompHeaders.push("Completion Details Finalized");
 
     if (missingCompHeaders.length > 0) {
       completedHeaders = [...completedHeaders, ...missingCompHeaders];
@@ -1781,6 +1805,7 @@ async function syncCompletedApprentices(options) {
         completedRecord["Completion Reason"] = completionReason;
         completedRecord["Other Completion Reason"] = otherCompletionReason || "";
         completedRecord["Completion Remarks"] = completionRemarks || "";
+        completedRecord["Completion Details Finalized"] = "PENDING";
         completedRecord["Updated By"] = updatedBy;
         completedRecord["Updated Date"] = nowStr;
 
@@ -1812,12 +1837,16 @@ async function syncCompletedApprentices(options) {
         const dateEmpty = !matchCompleted["Completion Date"] || String(matchCompleted["Completion Date"]).trim() === "";
         const reasonEmpty = !matchCompleted["Completion Reason"] || String(matchCompleted["Completion Reason"]).trim() === "";
 
-        if (overwriteCompletion || dateEmpty || reasonEmpty) {
-          matchCompleted["Completion Date"] = nowStr;
-          matchCompleted["Completed By"] = completedByVal;
-          matchCompleted["Completion Reason"] = completionReason;
-          matchCompleted["Other Completion Reason"] = otherCompletionReason || "";
-          matchCompleted["Completion Remarks"] = completionRemarks || "";
+        const isFinalized = String(matchCompleted["Completion Details Finalized"] || "").trim().toUpperCase() === "FINALIZED";
+
+        if (!isFinalized) {
+          if (overwriteCompletion || dateEmpty || reasonEmpty) {
+            matchCompleted["Completion Date"] = nowStr;
+            matchCompleted["Completed By"] = completedByVal;
+            matchCompleted["Completion Reason"] = completionReason;
+            matchCompleted["Other Completion Reason"] = otherCompletionReason || "";
+            matchCompleted["Completion Remarks"] = completionRemarks || "";
+          }
         }
 
         matchCompleted["Updated By"] = updatedBy;
@@ -1847,6 +1876,7 @@ async function syncCompletedApprentices(options) {
         newRecord["Completion Reason"] = completionReason;
         newRecord["Other Completion Reason"] = otherCompletionReason || "";
         newRecord["Completion Remarks"] = completionRemarks || "";
+        newRecord["Completion Details Finalized"] = "PENDING";
         newRecord["Updated By"] = updatedBy;
         newRecord["Updated Date"] = nowStr;
 
@@ -1972,6 +2002,113 @@ async function syncCompletedApprentices(options) {
   }
 }
 
+async function getPendingCompletionFinalization() {
+  const completed = await getCompletedApprentices();
+  return completed.filter(r => {
+    const finalized = String(r["Completion Details Finalized"] || "").trim().toUpperCase() === "FINALIZED";
+    const isBulkExcel = String(r["Completion Reason"] || "").trim() === "Bulk Excel Upload";
+    return !finalized && isBulkExcel;
+  });
+}
+
+async function finalizeCompletionDetails(options) {
+  const { selectedCodes, completionReason, otherReason, remarks, updatedBy } = options;
+  const startTime = Date.now();
+  const release = await dbMutex.acquire();
+  try {
+    const client = getSheetsClient();
+    
+    // Bypass cache to get most fresh completed apprentices
+    let completedRaw = await getCompletedApprentices(true);
+    let completedHeaders = dataCache.completed.headers || [];
+    
+    // Ensure "Completion Details Finalized" is in the headers
+    if (!completedHeaders.includes("Completion Details Finalized")) {
+      completedHeaders.push("Completion Details Finalized");
+      await executeWithRetry(() => client.spreadsheets.values.update({
+        spreadsheetId,
+        range: `Completed_Apprentices!A1:${getColumnLetter(completedHeaders.length)}1`,
+        valueInputOption: 'RAW',
+        requestBody: {
+          values: [completedHeaders]
+        }
+      }));
+    }
+
+    const cleanNormalized = (val) => {
+      if (val === undefined || val === null) return "";
+      return String(val).trim().toLowerCase().replace(/\s+/g, '');
+    };
+
+    const selectedSet = new Set(selectedCodes.map(code => cleanNormalized(code)));
+    let updatedCount = 0;
+    const profileLogRows = [];
+    const nowStr = new Date().toISOString().split('T')[0];
+
+    completedRaw.forEach(record => {
+      const code = cleanNormalized(record["Employee Code"]);
+      if (selectedSet.has(code)) {
+        const prevReason = record["Completion Reason"] || "";
+        const prevRemarks = record["Completion Remarks"] || "";
+        
+        record["Completion Reason"] = completionReason;
+        record["Other Completion Reason"] = otherReason || "";
+        record["Completion Remarks"] = remarks || "";
+        record["Completed By"] = updatedBy;
+        record["Updated By"] = updatedBy;
+        record["Updated Date"] = nowStr;
+        record["Completion Details Finalized"] = "FINALIZED";
+        
+        profileLogRows.push([
+          new Date().toISOString(),
+          record["Employee Code"],
+          record["Full Name"] || "",
+          updatedBy,
+          "Bulk Completion Details Finalized",
+          `Previous Reason: "${prevReason}" -> New Reason: "${completionReason}"; Previous Remarks: "${prevRemarks}" -> New Remarks: "${remarks}"`
+        ]);
+        
+        updatedCount++;
+      }
+    });
+
+    if (updatedCount > 0) {
+      const completedValues = objectsToValues(completedRaw, completedHeaders);
+      
+      // Update spreadsheet
+      await executeWithRetry(() => client.spreadsheets.values.update({
+        spreadsheetId,
+        range: `Completed_Apprentices!A1:${getColumnLetter(completedHeaders.length)}${completedRaw.length + 1}`,
+        valueInputOption: 'RAW',
+        requestBody: {
+          values: completedValues
+        }
+      }));
+
+      // Append profile audit logs
+      await executeWithRetry(() => client.spreadsheets.values.append({
+        spreadsheetId,
+        range: 'Profile_Audit_Logs!A1',
+        valueInputOption: 'RAW',
+        insertDataOption: 'INSERT_ROWS',
+        requestBody: {
+          values: profileLogRows
+        }
+      }));
+      
+      // Invalidate cache
+      invalidateDataCache();
+    }
+
+    return {
+      success: true,
+      updatedCount
+    };
+  } finally {
+    release();
+  }
+}
+
 module.exports = {
   getSheetsClient,
   getAllUsers,
@@ -1990,5 +2127,7 @@ module.exports = {
   executeWithRetry,
   getCacheInfo,
   validateCompletedApprentices,
-  syncCompletedApprentices
+  syncCompletedApprentices,
+  getPendingCompletionFinalization,
+  finalizeCompletionDetails
 };

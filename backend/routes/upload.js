@@ -447,4 +447,63 @@ router.post('/completed', authMiddleware, (req, res, next) => {
   }
 });
 
+// GET /api/upload/completed/pending-finalization
+router.get('/completed/pending-finalization', authMiddleware, async (req, res) => {
+  const user = req.user;
+  if (user.role !== 'Super HR') {
+    return res.status(403).json({ success: false, error: 'Permission denied. Only Super HR can view pending finalizations.' });
+  }
+
+  try {
+    const pending = await sheetsService.getPendingCompletionFinalization();
+    const cleanedPending = pending.map(r => {
+      const cleaned = { ...r };
+      delete cleaned["Completion Details Finalized"];
+      return cleaned;
+    });
+    return res.json({ success: true, records: cleanedPending });
+  } catch (err) {
+    console.error('Fetch Pending Finalization Error:', err);
+    return res.status(500).json({ success: false, error: 'Failed to fetch pending completion records.' });
+  }
+});
+
+// POST /api/upload/completed/finalize
+router.post('/completed/finalize', authMiddleware, async (req, res) => {
+  const user = req.user;
+  if (user.role !== 'Super HR') {
+    return res.status(403).json({ success: false, error: 'Permission denied. Only Super HR can finalize completion details.' });
+  }
+
+  const { selectedCodes, completionReason, otherReason, remarks } = req.body;
+  if (!selectedCodes || !Array.isArray(selectedCodes) || selectedCodes.length === 0) {
+    return res.status(400).json({ success: false, error: 'Selected Employee Codes are required.' });
+  }
+  if (!completionReason) {
+    return res.status(400).json({ success: false, error: 'Completion reason is required.' });
+  }
+
+  try {
+    const updatedBy = `Super HR Admin (${user.name})`;
+    const result = await sheetsService.finalizeCompletionDetails({
+      selectedCodes,
+      completionReason,
+      otherReason,
+      remarks,
+      updatedBy
+    });
+
+    analyticsCache.invalidate();
+
+    return res.json({
+      success: true,
+      updatedCount: result.updatedCount
+    });
+  } catch (err) {
+    console.error('Finalize Completion Details Error:', err);
+    const sanitizedError = err.message.replace(/([a-zA-Z]:\\[\w\\\.-]+)/g, '[Internal Path]');
+    return res.status(500).json({ success: false, error: 'Failed to finalize completion details: ' + sanitizedError });
+  }
+});
+
 module.exports = router;

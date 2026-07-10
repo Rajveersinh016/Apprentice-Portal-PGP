@@ -97,8 +97,11 @@
         
         <!-- Drag & Drop Zone Card -->
         <div class="card-custom col-span-2">
-          <div class="card-custom-header">
-            <h3 class="card-custom-title"><div class="card-icon"><i class="fas fa-file-excel"></i></div>Spreadsheet Importer</h3>
+          <div class="card-custom-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <h3 class="card-custom-title" style="margin-bottom: 0;"><div class="card-icon"><i class="fas fa-file-excel"></i></div>Spreadsheet Importer</h3>
+            <button class="btn-primary-custom btn-sm" id="btn-open-finalization" style="display: inline-flex; align-items: center; gap: 8px;" onclick="CompletionFinalizationPage.open()">
+              <i class="fas fa-graduation-cap"></i> Finalize Completions
+            </button>
           </div>
           <div class="card-custom-body">
             
@@ -282,7 +285,7 @@
       <div class="form-group">
         <label class="form-label">Completion Reason <span class="text-danger">*</span></label>
         <select class="form-control-custom" id="config-completion-reason" required>
-          <option value="" disabled selected>-- Select Completion Reason --</option>
+          <option value="Bulk Excel Upload" selected>Bulk Excel Upload</option>
           <option value="Successfully Completed Apprenticeship">Successfully Completed Apprenticeship</option>
           <option value="Resigned">Resigned</option>
           <option value="Terminated">Terminated</option>
@@ -315,6 +318,82 @@
     <div class="modal-footer-custom">
       <button type="button" class="btn-secondary-custom" onclick="ModalManager.hide('modal-completion-config')">Cancel</button>
       <button type="button" class="btn-primary-custom" id="btn-modal-confirm-sync">Confirm & Synchronize</button>
+    </div>
+  </div>
+</div>
+
+<!-- Completion Finalization Modal Backdrop -->
+<div class="modal-backdrop-custom" id="modal-completion-finalization" style="display: none; z-index: 999;">
+  <div class="modal-custom modal-xl" style="display: flex; flex-direction: column; max-height: 85vh; width: 95vw;">
+    <div class="modal-header-custom">
+      <h3 class="modal-title-custom"><i class="fas fa-graduation-cap"></i> Finalize Completion Details</h3>
+      <button class="modal-close-btn" onclick="CompletionFinalizationPage.close()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body-custom" style="display: grid; grid-template-columns: 1fr 340px; gap: var(--space-4); overflow: hidden; padding: var(--space-4); height: 60vh;">
+      
+      <!-- Left Column: Pending List Table -->
+      <div class="d-flex flex-column" style="overflow: hidden; gap: var(--space-3); height: 100%; width: 100%;">
+        <div class="d-flex justify-between align-center" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+          <div class="text-sm text-secondary fw-medium" id="finalize-selected-count">0 of 0 records selected</div>
+          <button class="btn-secondary-custom btn-sm" id="btn-select-all-toggle" onclick="CompletionFinalizationPage.toggleSelectAll()" style="padding: 4px 10px; font-size: 12px;">Toggle Select All</button>
+        </div>
+        
+        <div class="table-wrapper" style="overflow-y: auto; flex: 1; border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--surface-card);">
+          <table class="table-custom" style="margin-bottom: 0; width: 100%;">
+            <thead style="position: sticky; top: 0; background: var(--surface-card); z-index: 10; border-bottom: 2px solid var(--border-default);">
+              <tr>
+                <th style="width: 40px; text-align: center; vertical-align: middle;">
+                  <input type="checkbox" class="table-checkbox" id="finalize-select-all" onclick="CompletionFinalizationPage.handleSelectAll(this)">
+                </th>
+                <th>Employee Code</th>
+                <th>Name</th>
+                <th>Location</th>
+                <th>Department</th>
+                <th>Completion Date</th>
+                <th>Current Reason</th>
+              </tr>
+            </thead>
+            <tbody id="finalize-table-tbody">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Right Column: Bulk Action Panel -->
+      <div style="background: var(--surface-card-alt); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); overflow-y: auto; height: 100%;">
+        <h4 class="fw-semibold text-sm border-bottom pb-2 mb-2" style="display: flex; align-items: center; gap: 8px; font-size: 14px; margin-top: 0;"><i class="fas fa-tools text-brand"></i> Bulk Finalize Information</h4>
+        
+        <div class="form-group">
+          <label class="form-label text-xs fw-semibold mb-1">Completion Reason <span class="text-danger">*</span></label>
+          <select class="form-control-custom" id="finalize-reason" onchange="CompletionFinalizationPage.handleReasonChange(this)" style="font-size: 13px;">
+            <option value="" disabled selected>-- Select Completion Reason --</option>
+            <option value="Successfully Completed Apprenticeship">Successfully Completed Apprenticeship</option>
+            <option value="Training Completed">Training Completed</option>
+            <option value="Resigned">Resigned</option>
+            <option value="Terminated">Terminated</option>
+            <option value="Absconded">Absconded</option>
+            <option value="Left Organization">Left Organization</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <!-- Conditional Other Option -->
+        <div class="form-group" id="finalize-other-reason-group" style="display: none;">
+          <label class="form-label text-xs fw-semibold mb-1">Other Completion Reason <span class="text-danger">*</span></label>
+          <input type="text" class="form-control-custom" id="finalize-other-reason" placeholder="Enter other completion reason" style="font-size: 13px;">
+        </div>
+
+        <div class="form-group" style="flex: 1; display: flex; flex-direction: column;">
+          <label class="form-label text-xs fw-semibold mb-1">Completion Remarks</label>
+          <textarea class="form-control-custom" id="finalize-remarks" rows="6" placeholder="Enter optional completion remarks..." style="font-size: 13px; resize: none; flex: 1;"></textarea>
+        </div>
+
+        <button class="btn-primary-custom w-full" id="btn-submit-finalization" onclick="CompletionFinalizationPage.submit()" style="justify-content: center; padding: 10px; font-size: 14px;">
+          <i class="fas fa-save me-2"></i> Update Selected
+        </button>
+      </div>
+
     </div>
   </div>
 </div>

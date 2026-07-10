@@ -1972,8 +1972,7 @@ const ApprenticeDetailPage = {
 
     const isSuper = role === 'Super HR';
     const isOwnBranch = String(app.location).toLowerCase().trim() === String(currentBranch).toLowerCase().trim();
-    const isActive = app.status === 'Active';
-    const canEdit = (isSuper || isOwnBranch) && isActive;
+    const canEdit = isSuper || isOwnBranch;
 
     // Set page subtitle breadcrumb name
     const bName = document.getElementById('breadcrumb-candidate-name');
@@ -2058,6 +2057,22 @@ const ApprenticeDetailPage = {
         } else {
           if (otherGroupEl) otherGroupEl.style.display = 'none';
         }
+
+        // Populate completion edit inputs
+        const compDateInput = document.getElementById('input-completion-date');
+        const compByInput = document.getElementById('input-completed-by');
+        const compReasonInput = document.getElementById('input-completion-reason');
+        const otherReasonInput = document.getElementById('input-other-reason');
+        const compRemarksInput = document.getElementById('input-completion-remarks');
+
+        if (compDateInput) compDateInput.value = app.completionDate || '';
+        if (compByInput) compByInput.value = app.completedBy || '';
+        if (compReasonInput) {
+          compReasonInput.value = app.completionReason || 'Successfully Completed Apprenticeship';
+          this.handleCompletionReasonChange(compReasonInput);
+        }
+        if (otherReasonInput) otherReasonInput.value = app.otherCompletionReason || '';
+        if (compRemarksInput) compRemarksInput.value = app.completionRemarks || '';
       }
     } else {
       if (completionDetailsCard) completionDetailsCard.style.display = 'none';
@@ -2070,6 +2085,17 @@ const ApprenticeDetailPage = {
 
     // Render Dynamic / Additional Fields
     this.renderDynamicFields();
+  },
+
+  handleCompletionReasonChange(selectEl) {
+    const otherGroup = document.getElementById('group-other-reason');
+    if (otherGroup) {
+      if (selectEl.value === 'Other') {
+        otherGroup.style.display = 'block';
+      } else {
+        otherGroup.style.display = 'none';
+      }
+    }
   },
 
   renderDynamicFields() {
@@ -2153,6 +2179,26 @@ const ApprenticeDetailPage = {
       portalEnrollmentNumber: portalEnrollmentNumber || 'Pending',
       portalName: portalName || 'Pending'
     };
+
+    if (app.status === 'Completed') {
+      const compDateInput = document.getElementById('input-completion-date');
+      const compByInput = document.getElementById('input-completed-by');
+      const compReasonInput = document.getElementById('input-completion-reason');
+      const otherReasonInput = document.getElementById('input-other-reason');
+      const compRemarksInput = document.getElementById('input-completion-remarks');
+
+      if (compDateInput) payload.completionDate = compDateInput.value.trim();
+      if (compByInput) payload.completedBy = compByInput.value.trim();
+      if (compReasonInput) {
+        payload.completionReason = compReasonInput.value;
+        if (compReasonInput.value === 'Other' && otherReasonInput) {
+          payload.otherCompletionReason = otherReasonInput.value.trim();
+        } else {
+          payload.otherCompletionReason = '';
+        }
+      }
+      if (compRemarksInput) payload.completionRemarks = compRemarksInput.value.trim();
+    }
 
     // Collect dynamic fields
     const dynamicInputs = document.querySelectorAll('[data-dynamic-key]');
@@ -2692,7 +2738,7 @@ const ExcelUploadPage = {
     const reasonSelect = document.getElementById('config-completion-reason');
     const otherGroup = document.getElementById('config-other-reason-group');
     if (reasonSelect && otherGroup) {
-      reasonSelect.value = '';
+      reasonSelect.value = 'Bulk Excel Upload';
       otherGroup.style.display = 'none';
       reasonSelect.onchange = (e) => {
         if (e.target.value === 'Other') {
@@ -2706,7 +2752,7 @@ const ExcelUploadPage = {
     }
 
     const remarksTextarea = document.getElementById('config-completion-remarks');
-    if (remarksTextarea) remarksTextarea.value = '';
+    if (remarksTextarea) remarksTextarea.value = 'Completed via Bulk Excel Import';
     const overwriteCheck = document.getElementById('config-overwrite-completion');
     if (overwriteCheck) overwriteCheck.checked = false;
 
@@ -2784,37 +2830,63 @@ const ExcelUploadPage = {
       const skipped = resData.skipped || 0;
       const failed = resData.failed || 0;
 
-      ModalManager.confirm({
-        title: 'Sync Completed',
-        message: `Database synchronization completed successfully!\n\n• Rows Parsed: ${total}\n• Rows Moved (Active -> Completed): ${moved}\n• Rows Updated (CASE B): ${updated}\n• Rows Inserted (CASE C): ${inserted}\n• Rows Skipped (Duplicate upload): ${skipped}\n• Rows Failed (Invalid rows): ${failed}`,
-        iconType: 'success',
-        confirmText: 'View Completed Registry',
-        cancelText: 'Close',
-        onConfirm: () => {
-          window.location.href = 'apprentices.html?type=completed';
-        },
-        onCancel: async () => {
-          this.renderLiveResults(resData, true);
+      // Fetch pending finalizations immediately after completed upload succeeds
+      let hasPending = false;
+      try {
+        const pendingRes = await fetch(`${backendUrl}/api/upload/completed/pending-finalization`, {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const pendingData = await pendingRes.json();
+        if (pendingData.success && pendingData.records && pendingData.records.length > 0) {
+          hasPending = true;
           
           AppDB.invalidateCache();
           await AppDB.init();
           await this.loadUploadHistory();
-
           window.dispatchEvent(new CustomEvent('sync-completed'));
-          if (typeof DashboardPage !== 'undefined' && typeof DashboardPage.init === 'function') {
-            DashboardPage.init();
-          }
-          if (typeof ApprenticesPage !== 'undefined' && typeof ApprenticesPage.init === 'function') {
-            ApprenticesPage.init();
-          }
-          if (typeof AnalyticsPage !== 'undefined' && typeof AnalyticsPage.init === 'function') {
-            AnalyticsPage.init();
-          }
-          if (typeof ReportsPage !== 'undefined' && typeof ReportsPage.init === 'function') {
-            ReportsPage.init();
-          }
+          this.renderLiveResults(resData, true);
+          
+          // Automatically show Finalization Modal
+          CompletionFinalizationPage.show(pendingData.records);
         }
-      });
+      } catch (err) {
+        console.error('Error checking pending finalizations:', err);
+      }
+
+      if (!hasPending) {
+        ModalManager.confirm({
+          title: 'Sync Completed',
+          message: `Database synchronization completed successfully!\n\n• Rows Parsed: ${total}\n• Rows Moved (Active -> Completed): ${moved}\n• Rows Updated (CASE B): ${updated}\n• Rows Inserted (CASE C): ${inserted}\n• Rows Skipped (Duplicate upload): ${skipped}\n• Rows Failed (Invalid rows): ${failed}`,
+          iconType: 'success',
+          confirmText: 'View Completed Registry',
+          cancelText: 'Close',
+          onConfirm: () => {
+            window.location.href = 'apprentices.html?type=completed';
+          },
+          onCancel: async () => {
+            this.renderLiveResults(resData, true);
+            
+            AppDB.invalidateCache();
+            await AppDB.init();
+            await this.loadUploadHistory();
+
+            window.dispatchEvent(new CustomEvent('sync-completed'));
+            const currentPath = window.location.pathname;
+            if (currentPath.includes('dashboard.html') && typeof DashboardPage !== 'undefined' && typeof DashboardPage.init === 'function') {
+              DashboardPage.init();
+            }
+            if (currentPath.includes('apprentices.html') && typeof ApprenticesPage !== 'undefined' && typeof ApprenticesPage.init === 'function') {
+              ApprenticesPage.init();
+            }
+            if (currentPath.includes('analytics.html') && typeof AnalyticsPage !== 'undefined' && typeof AnalyticsPage.init === 'function') {
+              AnalyticsPage.init();
+            }
+            if (currentPath.includes('reports.html') && typeof ReportsPage !== 'undefined' && typeof ReportsPage.init === 'function') {
+              ReportsPage.init();
+            }
+          }
+        });
+      }
 
     } catch (err) {
       if (confirmBtn) {
@@ -4490,6 +4562,263 @@ const SkeletonManager = {
           <div class="skeleton skeleton-text" style="width: 80%;"></div>
         </div>
       `).join('');
+    }
+  }
+};
+
+const CompletionFinalizationPage = {
+  records: [],
+  selectedCodes: new Set(),
+
+  async open() {
+    const backendUrl = AppDB.getBackendUrl();
+    const token = AppDB.getToken();
+    if (!token) return;
+
+    try {
+      showGlobalLoader();
+      const response = await fetch(`${backendUrl}/api/upload/completed/pending-finalization`, {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      const res = await response.json();
+      hideGlobalLoader();
+
+      if (!response.ok || !res.success) {
+        Toast.error('Load Error', res.error || 'Failed to fetch pending records.');
+        return;
+      }
+
+      if (!res.records || res.records.length === 0) {
+        Toast.info('No Pending Records', 'There are no completed apprentices awaiting finalization.');
+        return;
+      }
+
+      this.show(res.records);
+    } catch (err) {
+      hideGlobalLoader();
+      console.error('Error loading pending finalization:', err);
+      Toast.error('Network Error', 'Failed to communicate with finalization server.');
+    }
+  },
+
+  show(records) {
+    this.records = records;
+    this.selectedCodes = new Set();
+    
+    // Clear bulk fields
+    const reasonSelect = document.getElementById('finalize-reason');
+    if (reasonSelect) {
+      reasonSelect.value = '';
+      this.handleReasonChange(reasonSelect);
+    }
+    const otherInput = document.getElementById('finalize-other-reason');
+    if (otherInput) otherInput.value = '';
+    const remarksTextarea = document.getElementById('finalize-remarks');
+    if (remarksTextarea) remarksTextarea.value = '';
+
+    // Check all by default
+    const selectAllCheck = document.getElementById('finalize-select-all');
+    if (selectAllCheck) selectAllCheck.checked = true;
+
+    records.forEach(r => {
+      this.selectedCodes.add(r["Employee Code"]);
+    });
+
+    this.renderTable();
+    this.updateSelectedCountText();
+    ModalManager.show('modal-completion-finalization');
+  },
+
+  close() {
+    ModalManager.hide('modal-completion-finalization');
+  },
+
+  renderTable() {
+    const tbody = document.getElementById('finalize-table-tbody');
+    if (!tbody) return;
+
+    if (this.records.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">No records found.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = this.records.map(r => {
+      const code = r["Employee Code"];
+      const isChecked = this.selectedCodes.has(code) ? 'checked' : '';
+      return `
+        <tr>
+          <td style="text-align: center; vertical-align: middle;">
+            <input type="checkbox" class="table-checkbox finalize-row-checkbox" data-code="${code}" ${isChecked} onchange="CompletionFinalizationPage.handleRowCheckboxChange(this)">
+          </td>
+          <td class="fw-semibold text-brand">${code}</td>
+          <td>${r["Full Name"] || ""}</td>
+          <td><span class="badge-custom badge-neutral">${r["Location"] || ""}</span></td>
+          <td>${r["Department"] || ""}</td>
+          <td>${r["Completion Date"] || ""}</td>
+          <td><span class="badge-custom badge-warning">${r["Completion Reason"] || ""}</span></td>
+        </tr>
+      `;
+    }).join('');
+  },
+
+  handleSelectAll(checkbox) {
+    const rowCheckboxes = document.querySelectorAll('.finalize-row-checkbox');
+    this.selectedCodes.clear();
+    rowCheckboxes.forEach(cb => {
+      cb.checked = checkbox.checked;
+      if (checkbox.checked) {
+        const code = cb.getAttribute('data-code');
+        this.selectedCodes.add(code);
+      }
+    });
+    this.updateSelectedCountText();
+  },
+
+  toggleSelectAll() {
+    const selectAllCheck = document.getElementById('finalize-select-all');
+    if (selectAllCheck) {
+      selectAllCheck.checked = !selectAllCheck.checked;
+      this.handleSelectAll(selectAllCheck);
+    }
+  },
+
+  handleRowCheckboxChange(checkbox) {
+    const code = checkbox.getAttribute('data-code');
+    if (checkbox.checked) {
+      this.selectedCodes.add(code);
+    } else {
+      this.selectedCodes.delete(code);
+    }
+
+    const selectAllCheck = document.getElementById('finalize-select-all');
+    if (selectAllCheck) {
+      selectAllCheck.checked = (this.selectedCodes.size === this.records.length);
+    }
+    this.updateSelectedCountText();
+  },
+
+  updateSelectedCountText() {
+    const el = document.getElementById('finalize-selected-count');
+    if (el) {
+      el.innerText = `${this.selectedCodes.size} of ${this.records.length} records selected`;
+    }
+  },
+
+  handleReasonChange(selectEl) {
+    const otherGroup = document.getElementById('finalize-other-reason-group');
+    const otherInput = document.getElementById('finalize-other-reason');
+    if (selectEl.value === 'Other') {
+      otherGroup.style.display = 'block';
+      otherInput.setAttribute('required', 'true');
+    } else {
+      otherGroup.style.display = 'none';
+      otherInput.removeAttribute('required');
+    }
+  },
+
+  async submit() {
+    if (this.selectedCodes.size === 0) {
+      Toast.error('No Selection', 'Please select at least one apprentice record.');
+      return;
+    }
+
+    const reasonSelect = document.getElementById('finalize-reason');
+    const otherInput = document.getElementById('finalize-other-reason');
+    const remarksTextarea = document.getElementById('finalize-remarks');
+
+    const completionReason = reasonSelect ? reasonSelect.value : '';
+    const otherReason = otherInput ? otherInput.value.trim() : '';
+    const remarks = remarksTextarea ? remarksTextarea.value.trim() : '';
+
+    if (!completionReason) {
+      Toast.error('Required Field', 'Please select a completion reason.');
+      return;
+    }
+    if (completionReason === 'Other' && !otherReason) {
+      Toast.error('Required Field', 'Please enter the other completion reason.');
+      return;
+    }
+
+    const confirmBtn = document.getElementById('btn-submit-finalization');
+    if (confirmBtn) {
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Finalizing...';
+    }
+
+    const backendUrl = AppDB.getBackendUrl();
+    const token = AppDB.getToken();
+
+    try {
+      const response = await fetch(`${backendUrl}/api/upload/completed/finalize`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({
+          selectedCodes: Array.from(this.selectedCodes),
+          completionReason,
+          otherReason,
+          remarks
+        })
+      });
+
+      const res = await response.json();
+
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="fas fa-save me-2"></i> Update Selected';
+      }
+
+      if (!response.ok || !res.success) {
+        throw new Error(res.error || 'Failed to finalize records.');
+      }
+
+      this.close();
+      Toast.success('Completions Finalized', `Successfully finalized ${res.updatedCount} records.`);
+
+      // Refresh Caches
+      AppDB.invalidateCache();
+      await AppDB.init();
+
+      if (typeof ExcelUploadPage !== 'undefined' && typeof ExcelUploadPage.loadUploadHistory === 'function') {
+        ExcelUploadPage.loadUploadHistory();
+      }
+
+      // Refresh Dashboard, Apprentices List, Reports, Analytics pages if they exist on the current page
+      const currentPath = window.location.pathname;
+      if (currentPath.includes('dashboard.html') && typeof DashboardPage !== 'undefined' && typeof DashboardPage.init === 'function') {
+        DashboardPage.init();
+      }
+      if (currentPath.includes('apprentices.html') && typeof ApprenticesPage !== 'undefined' && typeof ApprenticesPage.init === 'function') {
+        ApprenticesPage.init();
+      }
+      if (currentPath.includes('analytics.html') && typeof AnalyticsPage !== 'undefined' && typeof AnalyticsPage.init === 'function') {
+        AnalyticsPage.init();
+      }
+      if (currentPath.includes('reports.html') && typeof ReportsPage !== 'undefined' && typeof ReportsPage.init === 'function') {
+        ReportsPage.init();
+      }
+
+      // Show success modal summary
+      ModalManager.confirm({
+        title: 'Finalization Complete',
+        message: `Successfully finalized and locked ${res.updatedCount} completed apprentice profiles.\n\nFuture spreadsheet uploads will never overwrite their completion details.`,
+        iconType: 'success',
+        confirmText: 'View Completed Registry',
+        cancelText: 'Close',
+        onConfirm: () => {
+          window.location.href = 'apprentices.html?type=completed';
+        }
+      });
+
+    } catch (err) {
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="fas fa-save me-2"></i> Update Selected';
+      }
+      console.error('Submit finalization error:', err);
+      Toast.error('Finalization Failed', err.message || 'Failed to update records.');
     }
   }
 };
