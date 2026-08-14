@@ -141,7 +141,7 @@ function calculateSectionStatus(totalBudget, totalActual, staffAvailable, workme
 /**
  * getBudgetDashboard(filters)
  * Full section-level dashboard analytics & table rows.
- * V3: Added completed counts, removed seed fallback, added locationSummary.
+ * V3: Added completed counts, removed seed fallback, added locationSummary
  */
 async function getBudgetDashboard(filters) {
   filters = filters || {};
@@ -151,7 +151,6 @@ async function getBudgetDashboard(filters) {
   const secFilter   = (filters.section    || '').trim().toLowerCase();
   const searchFilter= (filters.search     || '').trim().toLowerCase();
 
-  // V3: Fetch active + completed + budget in single parallel call
   const results = await Promise.all([
     sheetsService.getBudgetSheet(),
     sheetsService.getActiveApprentices(),
@@ -166,7 +165,6 @@ async function getBudgetDashboard(filters) {
   const completedByLoc   = calculateCompletedByLocation(completedApprentices);
   const completedBySec   = calculateCompletedBySection(completedApprentices);
 
-  // Active budget rows only
   const activeBudgets = budgetRows.filter(function(r) {
     return String(r['Status'] || 'ACTIVE').trim().toUpperCase() === 'ACTIVE';
   });
@@ -177,18 +175,16 @@ async function getBudgetDashboard(filters) {
   let totalStaffActual   = 0;
   let totalWorkmenActual = 0;
 
-  // V3: Track per-location summary for the locationSummary[] response field
   const locSummaryMap = {};
 
   activeBudgets.forEach(function(config) {
     const loc     = String(config['Location']   || 'Kosamba').trim();
-    const plant   = String(config['Plant']      || '145 TPD').trim();
+    const plant   = String(config['Plant']      !== undefined && config['Plant'] !== null ? config['Plant'] : '').trim();
     const dept    = String(config['Department'] || '').trim();
-    const section = String(config['Section']    || config['Department'] || '').trim();
+    const section = String(config['Section']    !== undefined && config['Section'] !== null ? config['Section'] : '').trim();
 
-    if (!section) return;
+    if (!dept) return;
 
-    // Build per-location summary (unfiltered — always covers all locations)
     const locKey = loc.toLowerCase();
     if (!locSummaryMap[locKey]) {
       locSummaryMap[locKey] = {
@@ -210,7 +206,6 @@ async function getBudgetDashboard(filters) {
     locSummaryMap[locKey].currentActual += secTotalActual;
     if (secTotalActual > secTotalBudget) locSummaryMap[locKey].overBudgetSections++;
 
-    // Now apply dashboard filters for the main sections array
     if (locFilter   && loc.toLowerCase()    !== locFilter)   return;
     if (plantFilter && plant.toLowerCase()  !== plantFilter) return;
     if (deptFilter  && dept.toLowerCase()   !== deptFilter)  return;
@@ -239,13 +234,12 @@ async function getBudgetDashboard(filters) {
     const totalAvailable   = totalBudget - totalActual;
     const utilizationPct   = totalBudget > 0 ? Math.round((totalActual / totalBudget) * 1000) / 10 : 0;
 
-    // V3: completed count for this section
     const completedCount = completedBySec[secKey] || 0;
 
     const stObj = calculateSectionStatus(totalBudget, totalActual, staffAvailable, workmenAvailable);
 
     sections.push({
-      budgetId:         config['Budget ID'] || ('BDG-' + section),
+      budgetId:         config['Budget ID'] || ('BDG-' + (section || dept)),
       location:         loc,
       plant:            plant,
       department:       dept,
@@ -260,13 +254,11 @@ async function getBudgetDashboard(filters) {
       totalActual:      totalActual,
       totalAvailable:   totalAvailable,
       utilizationPct:   utilizationPct,
-      completedCount:   completedCount,   // V3: new field
+      completedCount:   completedCount,
       status:           stObj.status,
       statusClass:      stObj.statusClass,
       subText:          stObj.subText,
-      categoryWarning:  stObj.categoryWarning,
-      dateFrom:         config['Date From'] || '',
-      dateTo:           config['Date To']   || ''
+      categoryWarning:  stObj.categoryWarning
     });
 
     totalStaffBudget   += staffBudget;
@@ -275,66 +267,57 @@ async function getBudgetDashboard(filters) {
     totalWorkmenActual += workmenActual;
   });
 
-  sections.sort(function(a, b) {
-    return a.section.localeCompare(b.section, undefined, { sensitivity: 'base' });
-  });
+  const totalBudgetAll = totalStaffBudget + totalWorkmenBudget;
+  const totalActualAll = totalStaffActual + totalWorkmenActual;
 
-  const totalBudgetAll     = totalStaffBudget + totalWorkmenBudget;
-  const totalActualAll     = totalStaffActual + totalWorkmenActual;
-  const totalStaffAvail    = totalStaffBudget - totalStaffActual;
-  const totalWorkmenAvail  = totalWorkmenBudget - totalWorkmenActual;
-  const totalAvailAll      = totalBudgetAll - totalActualAll;
-  const overallUtilPct     = totalBudgetAll > 0 ? Math.round((totalActualAll / totalBudgetAll) * 1000) / 10 : 0;
+  const locationSummary = Object.keys(locSummaryMap).map(function(k) {
+    const item = locSummaryMap[k];
+    const avail = item.totalBudget - item.currentActual;
+    const util  = item.totalBudget > 0 ? Math.round((item.currentActual / item.totalBudget) * 1000) / 10 : 0;
+    let status  = 'OPEN';
+    if (avail < 0) status = 'OVER BUDGET';
+    else if (avail === 0) status = 'FULL';
 
-  // V3: Total completed for the filtered scope
-  let totalCompleted = 0;
-  if (locFilter) {
-    totalCompleted = completedByLoc[locFilter] || 0;
-  } else {
-    // Sum across all locations
-    Object.values(completedByLoc).forEach(function(c) { totalCompleted += c; });
-  }
-
-  // V3: Build locationSummary array (derived available + utilization)
-  const locationSummary = Object.values(locSummaryMap).map(function(ls) {
-    const avail = ls.totalBudget - ls.currentActual;
-    const util  = ls.totalBudget > 0 ? Math.round((ls.currentActual / ls.totalBudget) * 1000) / 10 : 0;
     return {
-      location:      ls.location,
-      totalBudget:   ls.totalBudget,
-      currentActual: ls.currentActual,
-      available:     avail,
-      completed:     ls.completed,
-      utilizationPct: util,
-      overBudgetSections: ls.overBudgetSections,
-      status: avail < 0 ? 'OVER BUDGET' : avail === 0 ? 'FULL' : 'AVAILABLE'
+      location:           item.location,
+      totalBudget:        item.totalBudget,
+      currentActual:      item.currentActual,
+      available:          avail,
+      completed:          item.completed,
+      utilizationPct:     util,
+      status:             status,
+      overBudgetSections: item.overBudgetSections
     };
-  }).sort(function(a, b) {
-    return a.location.localeCompare(b.location, undefined, { sensitivity: 'base' });
   });
+
+  locationSummary.sort(function(a, b) {
+    return a.location.localeCompare(b.location);
+  });
+
+  const totalCompletedAll = (completedApprentices || []).length;
 
   return {
     summary: {
-      totalBudget:       totalBudgetAll,
-      currentActual:     totalActualAll,
-      available:         totalAvailAll,
-      utilizationPct:    overallUtilPct,
-      staffBudget:       totalStaffBudget,
-      staffActual:       totalStaffActual,
-      staffAvailable:    totalStaffAvail,
-      workmenBudget:     totalWorkmenBudget,
-      workmenActual:     totalWorkmenActual,
-      workmenAvailable:  totalWorkmenAvail,
-      totalCompleted:    totalCompleted        // V3: new field
+      totalBudget:      totalBudgetAll,
+      currentActual:    totalActualAll,
+      available:        totalBudgetAll - totalActualAll,
+      utilizationPct:   totalBudgetAll > 0 ? Math.round((totalActualAll / totalBudgetAll) * 1000) / 10 : 0,
+      staffBudget:      totalStaffBudget,
+      staffActual:      totalStaffActual,
+      staffAvailable:   totalStaffBudget - totalStaffActual,
+      workmenBudget:    totalWorkmenBudget,
+      workmenActual:    totalWorkmenActual,
+      workmenAvailable: totalWorkmenBudget - totalWorkmenActual,
+      totalCompleted:   totalCompletedAll
     },
-    sections:        sections,
-    locationSummary: locationSummary,          // V3: new field
-    departments:     sections                  // Backward compatibility
+    locationSummary: locationSummary,
+    sections: sections
   };
 }
 
 /**
  * getBudgetConfiguration(options)
+ * Returns budget master entries for table view.
  */
 async function getBudgetConfiguration(options) {
   options = options || {};
@@ -351,12 +334,12 @@ async function getBudgetConfiguration(options) {
   (budgetRows || []).forEach(function(row) {
     const budgetId = String(row['Budget ID']  || '').trim();
     const loc      = String(row['Location']   || '').trim();
-    const plant    = String(row['Plant']      || '').trim();
+    const plant    = String(row['Plant']      !== undefined && row['Plant'] !== null ? row['Plant'] : '').trim();
     const dept     = String(row['Department'] || '').trim();
-    const section  = String(row['Section']    || dept).trim();
+    const section  = String(row['Section']    !== undefined && row['Section'] !== null ? row['Section'] : '').trim();
     const status   = String(row['Status']     || 'ACTIVE').trim().toUpperCase();
 
-    if (!section) return;
+    if (!dept) return;
     if (!showInactive && status === 'INACTIVE') return;
 
     if (locFilter   && loc.toLowerCase()   !== locFilter)   return;
@@ -396,7 +379,9 @@ async function getBudgetConfiguration(options) {
   });
 
   result.sort(function(a, b) {
-    return a.section.localeCompare(b.section, undefined, { sensitivity: 'base' });
+    const nameA = a.section || a.department;
+    const nameB = b.section || b.department;
+    return nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
   });
 
   return result;
@@ -407,19 +392,17 @@ async function getBudgetConfiguration(options) {
  */
 async function createBudget(data, user) {
   const loc     = String(data.location   || '').trim();
-  const plant   = String(data.plant      || '145 TPD').trim();
+  const plant   = String(data.plant      !== undefined && data.plant !== null ? data.plant : '').trim();
   const dept    = String(data.department || '').trim();
-  const section = String(data.section    || dept).trim();
+  const section = String(data.section    !== undefined && data.section !== null ? data.section : '').trim();
   const staff   = parseInt(data.staffBudget)   || 0;
   const wrk     = parseInt(data.workmenBudget) || 0;
   const dateFrom= String(data.dateFrom || '2026-01-01').trim();
   const dateTo  = String(data.dateTo   || '2026-12-31').trim();
   const status  = (data.status || 'ACTIVE').trim().toUpperCase();
 
-  if (!loc)     throw new Error('Location is required.');
-  if (!plant)   throw new Error('Plant is required.');
-  if (!dept)    throw new Error('Department is required.');
-  if (!section) throw new Error('Section is required.');
+  if (!loc)  throw new Error('Location is required.');
+  if (!dept) throw new Error('Department is required.');
   if (staff < 0 || wrk < 0) throw new Error('Budget values cannot be negative.');
   if (dateTo && dateFrom && new Date(dateTo) < new Date(dateFrom)) {
     throw new Error('Date To cannot be before Date From.');
@@ -427,16 +410,22 @@ async function createBudget(data, user) {
 
   const rows = await sheetsService.getBudgetSheet();
   const existingIndex = rows.findIndex(function(r) {
-    return String(r['Location']   || '').trim().toLowerCase() === loc.toLowerCase() &&
-           String(r['Plant']      || '').trim().toLowerCase() === plant.toLowerCase() &&
-           String(r['Department'] || '').trim().toLowerCase() === dept.toLowerCase() &&
-           String(r['Section']    || '').trim().toLowerCase() === section.toLowerCase();
+    const rLoc   = String(r['Location']   || '').trim().toLowerCase();
+    const rPlant = String(r['Plant']      || '').trim().toLowerCase();
+    const rDept  = String(r['Department'] || '').trim().toLowerCase();
+    const rSec   = String(r['Section']    || '').trim().toLowerCase();
+
+    return rLoc === loc.toLowerCase() &&
+           rPlant === plant.toLowerCase() &&
+           rDept === dept.toLowerCase() &&
+           rSec === section.toLowerCase();
   });
 
   if (existingIndex !== -1) {
     const existingStatus = String(rows[existingIndex]['Status'] || 'ACTIVE').trim().toUpperCase();
     if (existingStatus === 'ACTIVE') {
-      throw new Error(`A budget configuration for "${loc}" - "${plant}" - "${section}" already exists.`);
+      const desc = section ? `"${loc}" - "${dept}" - "${section}"` : `"${loc}" - "${dept}"`;
+      throw new Error(`A budget configuration for ${desc} already exists.`);
     }
   }
 
@@ -475,7 +464,7 @@ async function createBudget(data, user) {
     user:             userDisp,
     action:           'Section Budget Created',
     location:         loc,
-    department:       dept + ' / ' + section,
+    department:       dept + (section ? (' / ' + section) : ''),
     oldStaffBudget:   0,
     newStaffBudget:   staff,
     oldWorkmenBudget: 0,
@@ -504,9 +493,12 @@ async function updateBudget(budgetId, updates, user) {
 
   const existing = rows[index];
   const loc      = String(updates.location   !== undefined ? updates.location   : existing['Location']).trim();
-  const plant    = String(updates.plant      !== undefined ? updates.plant      : existing['Plant']).trim();
+  const plant    = String(updates.plant      !== undefined ? updates.plant      : (existing['Plant'] || '')).trim();
   const dept     = String(updates.department !== undefined ? updates.department : existing['Department']).trim();
-  const section  = String(updates.section    !== undefined ? updates.section    : existing['Section']).trim();
+  const section  = String(updates.section    !== undefined ? updates.section    : (existing['Section'] || '')).trim();
+
+  if (!loc)  throw new Error('Location is required.');
+  if (!dept) throw new Error('Department is required.');
 
   const newStaff = updates.staffBudget   !== undefined ? (parseInt(updates.staffBudget)   || 0) : (parseInt(existing['Staff Budget'])   || 0);
   const newWrk   = updates.workmenBudget !== undefined ? (parseInt(updates.workmenBudget) || 0) : (parseInt(existing['Workmen Budget']) || 0);
@@ -551,7 +543,7 @@ async function updateBudget(budgetId, updates, user) {
     user:             userDisp,
     action:           'Section Budget Updated',
     location:         loc,
-    department:       dept + ' / ' + section,
+    department:       dept + (section ? (' / ' + section) : ''),
     oldStaffBudget:   oldStaff,
     newStaffBudget:   newStaff,
     oldWorkmenBudget: oldWrk,

@@ -397,19 +397,19 @@
             <select id="form-location" class="form-control-custom form-select-custom" required></select>
           </div>
           <div class="form-group-budget">
-            <label for="form-plant" class="form-label">Plant <span class="required">*</span></label>
-            <input type="text" id="form-plant" class="form-control-custom" value="145 TPD" required>
+            <label for="form-plant" class="form-label">Plant / TPD <span style="font-size:11px;color:var(--text-secondary);font-weight:normal;margin-left:4px;">(Optional)</span></label>
+            <input type="text" id="form-plant" class="form-control-custom" placeholder="e.g. 145 TPD">
           </div>
         </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
           <div class="form-group-budget">
             <label for="form-dept" class="form-label">Department <span class="required">*</span></label>
-            <input type="text" id="form-dept" class="form-control-custom" placeholder="e.g. Quality Control" required>
+            <select id="form-dept" class="form-control-custom form-select-custom" required></select>
           </div>
           <div class="form-group-budget">
-            <label for="form-section" class="form-label">Section <span class="required">*</span></label>
-            <input type="text" id="form-section" class="form-control-custom" placeholder="e.g. QC C&P" required>
+            <label for="form-section" class="form-label">Section <span style="font-size:11px;color:var(--text-secondary);font-weight:normal;margin-left:4px;">(Optional)</span></label>
+            <input type="text" id="form-section" class="form-control-custom" placeholder="e.g. QC C&P">
           </div>
         </div>
 
@@ -570,8 +570,9 @@ const BudgetPage = (function() {
       populateSelect('config-filter-location', locs, 'All Locations');
       populateSelect('form-location', locs, 'Select Location');
 
-      // V3: Departments from live /api/departments
+      // Live departments for filter and form
       populateSelect('dash-filter-dept', depts, 'All Departments');
+      populateSelect('form-dept', depts, 'Select Department');
 
       if (!isSuperHR()) {
         var userBranch = AppDB.getBranch();
@@ -591,8 +592,16 @@ const BudgetPage = (function() {
     var el = document.getElementById(id);
     if (!el) return;
     var html = placeholder ? '<option value="">' + placeholder + '</option>' : '';
-    items.forEach(function(item) {
+    var clean = [];
+    (items || []).forEach(function(item) {
       var val = typeof item === 'string' ? item : item.name || item.department || item;
+      if (val && typeof val === 'string') {
+        val = val.trim();
+        if (val && !clean.includes(val)) clean.push(val);
+      }
+    });
+    clean.sort(function(a, b) { return a.localeCompare(b, undefined, { sensitivity: 'base' }); });
+    clean.forEach(function(val) {
       html += '<option value="' + esc(val) + '">' + esc(val) + '</option>';
     });
     el.innerHTML = html;
@@ -999,7 +1008,7 @@ const BudgetPage = (function() {
     document.getElementById('budget-modal-title-text').innerHTML = '<i class="fas fa-wallet" style="color:#0078d4;"></i> Add Section Budget';
     document.getElementById('form-budget-id').value = '';
     document.getElementById('form-location').value = '';
-    document.getElementById('form-plant').value = '145 TPD';
+    document.getElementById('form-plant').value = '';
     document.getElementById('form-dept').value = '';
     document.getElementById('form-section').value = '';
     document.getElementById('form-staff-budget').value = '0';
@@ -1019,10 +1028,25 @@ const BudgetPage = (function() {
 
     document.getElementById('budget-modal-title-text').innerHTML = '<i class="fas fa-edit" style="color:#0078d4;"></i> Edit Section Budget: ' + esc(budgetId);
     document.getElementById('form-budget-id').value = item.budgetId;
-    document.getElementById('form-location').value = item.location;
-    document.getElementById('form-plant').value = item.plant || '145 TPD';
-    document.getElementById('form-dept').value = item.department;
-    document.getElementById('form-section').value = item.section;
+    document.getElementById('form-location').value = item.location || '';
+    document.getElementById('form-plant').value = item.plant || '';
+
+    var deptVal = item.department || '';
+    var deptSelect = document.getElementById('form-dept');
+    if (deptSelect && deptVal) {
+      var exists = Array.from(deptSelect.options).some(function(opt) { return opt.value === deptVal; });
+      if (!exists) {
+        var opt = document.createElement('option');
+        opt.value = deptVal;
+        opt.textContent = deptVal;
+        deptSelect.appendChild(opt);
+      }
+      deptSelect.value = deptVal;
+    } else if (deptSelect) {
+      deptSelect.value = '';
+    }
+
+    document.getElementById('form-section').value = item.section || '';
     document.getElementById('form-staff-budget').value = item.staffBudget;
     document.getElementById('form-workmen-budget').value = item.workmenBudget;
     document.getElementById('form-total-budget').value = (parseInt(item.staffBudget)||0) + (parseInt(item.workmenBudget)||0);
