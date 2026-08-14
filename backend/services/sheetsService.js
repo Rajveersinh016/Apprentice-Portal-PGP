@@ -68,12 +68,16 @@ const dataCache = {
   users:           { data: null, ts: 0, isRefreshing: false },
   audit:           { data: null, ts: 0, isRefreshing: false },
   uploadAuditLogs: { data: null, ts: 0 },
+  budget:          { data: null, ts: 0 },  // Department_Budget sheet cache
+  departmentMaster:{ data: null, ts: 0 },  // Department_Master sheet cache
   TTL: {
     active:          30 * 1000,   // 30 seconds
     completed:       30 * 1000,   // 30 seconds
     users:           300 * 1000,  // 5 minutes
     audit:           60 * 1000,   // 60 seconds (profile audit logs)
-    uploadAuditLogs: 60 * 1000    // 60 seconds (upload history)
+    uploadAuditLogs: 60 * 1000,   // 60 seconds (upload history)
+    budget:          30 * 1000,   // 30 seconds (budget config)
+    departmentMaster:30 * 1000    // 30 seconds (master departments)
   }
 };
 
@@ -106,9 +110,12 @@ function isCacheValid(key) {
 // FIX (Bug 8): Does NOT invalidate audit caches — they have independent
 // lifecycles. Profile audit and upload audit logs are append-only historical
 // records that are not affected by data writes to Active/Completed sheets.
+// Budget cache IS invalidated here because budget actuals depend on active apprentice data.
 function invalidateDataCache() {
-  dataCache.active.data    = null;
-  dataCache.completed.data = null;
+  dataCache.active.data           = null;
+  dataCache.completed.data        = null;
+  dataCache.budget.data           = null;  // Budget actuals depend on active apprentice data
+  dataCache.departmentMaster.data = null;
   activeCacheVersion++;
   completedCacheVersion++;
   updateStore(s => { s.cacheInvalidated = true; });
@@ -418,6 +425,23 @@ async function ensureSheetsExistInternal() {
     },
     { name: 'Profile_Audit_Logs', headers: [
         "Timestamp", "Employee Code", "Employee Name", "Updated By", "Action", "Changes"
+      ]
+    },
+    // Budget Management Module (Section-Level) sheets
+    { name: 'Department_Budget', headers: [
+        "Budget ID", "Location", "Plant", "Department", "Section",
+        "Staff Budget", "Workmen Budget", "Date From", "Date To",
+        "Status", "Created By", "Created Date", "Updated By", "Updated Date"
+      ]
+    },
+    { name: 'Department_Master', headers: [
+        "Department", "Status", "Created By", "Created Date", "Updated By", "Updated Date"
+      ]
+    },
+    { name: 'Budget_Audit_Logs', headers: [
+        "Timestamp", "User", "Action", "Location", "Department",
+        "Old Staff Budget", "New Staff Budget",
+        "Old Workmen Budget", "New Workmen Budget", "Old Status", "New Status"
       ]
     }
   ];
@@ -2109,6 +2133,143 @@ async function finalizeCompletionDetails(options) {
   }
 }
 
+// ============================================================
+// BUDGET MANAGEMENT MODULE V2 — Google Sheets CRUD Helpers
+// Isolated from all other service logic. No existing code modified.
+// ============================================================
+
+const BUDGET_HEADERS = [
+  'Budget ID', 'Location', 'Plant', 'Department', 'Section',
+  'Staff Budget', 'Workmen Budget', 'Date From', 'Date To',
+  'Status', 'Created By', 'Created Date', 'Updated By', 'Updated Date'
+];
+
+const MASTER_DEPT_HEADERS = [
+  'Department', 'Status', 'Created By', 'Created Date', 'Updated By', 'Updated Date'
+];
+
+/**
+ * Returns all rows from Department_Budget sheet.
+ * Uses budget cache (TTL 30 s); invalidated by invalidateDataCache().
+ */
+async function getBudgetSheet() {
+  if (dataCache.budget.data !== null) {
+    const age = Date.now() - dataCache.budget.ts;
+    if (age < dataCache.TTL.budget) {
+      return dataCache.budget.data;
+    }
+  }
+  const release = await dbMutex.acquire();
+  try {
+    const result = await getSheetData('Department_Budget');
+    dataCache.budget.data = result;
+    dataCache.budget.ts   = Date.now();
+    return result;
+  } finally {
+    release();
+  }
+}
+
+/**
+ * Overwrites Department_Budget sheet with the given rows array.
+ * Each row must be a flat object with the sheet headers as keys.
+ * Invalidates budget cache after write.
+ */
+async function saveBudgetSheet(rows) {
+  const release = await dbMutex.acquire();
+  try {
+    const client = getSheetsClient();
+    const values = [BUDGET_HEADERS, ...rows.map(r => BUDGET_HEADERS.map(h => sanitizeCellValue(r[h] !== undefined ? r[h] : '')))];
+    await executeWithRetry(() => client.spreadsheets.values.update({
+      spreadsheetId,
+      range: `Department_Budget!A1:N${values.length}`,
+      valueInputOption: 'RAW',
+      requestBody: { values }
+    }));
+    // Clear rows beyond the written range (handle row shrinkage if needed)
+    dataCache.budget.data = null;
+    dataCache.budget.ts   = 0;
+  } finally {
+    release();
+  }
+}
+
+/**
+ * Returns all rows from Department_Master sheet.
+ */
+async function getDepartmentMasterSheet() {
+  if (dataCache.departmentMaster.data !== null) {
+    const age = Date.now() - dataCache.departmentMaster.ts;
+    if (age < dataCache.TTL.departmentMaster) {
+      return dataCache.departmentMaster.data;
+    }
+  }
+  const release = await dbMutex.acquire();
+  try {
+    const result = await getSheetData('Department_Master');
+    dataCache.departmentMaster.data = result;
+    dataCache.departmentMaster.ts   = Date.now();
+    return result;
+  } finally {
+    release();
+  }
+}
+
+/**
+ * Overwrites Department_Master sheet with the given rows array.
+ */
+async function saveDepartmentMasterSheet(rows) {
+  const release = await dbMutex.acquire();
+  try {
+    const client = getSheetsClient();
+    const values = [MASTER_DEPT_HEADERS, ...rows.map(r => MASTER_DEPT_HEADERS.map(h => sanitizeCellValue(r[h] !== undefined ? r[h] : '')))];
+    await executeWithRetry(() => client.spreadsheets.values.update({
+      spreadsheetId,
+      range: `Department_Master!A1:F${values.length}`,
+      valueInputOption: 'RAW',
+      requestBody: { values }
+    }));
+    dataCache.departmentMaster.data = null;
+    dataCache.departmentMaster.ts   = 0;
+  } finally {
+    release();
+  }
+}
+
+/**
+ * Appends a single audit entry to Budget_Audit_Logs.
+ */
+async function appendBudgetAuditLog(entry) {
+  const client = getSheetsClient();
+  const row = [
+    sanitizeCellValue(entry.timestamp || new Date().toISOString()),
+    sanitizeCellValue(entry.user || ''),
+    sanitizeCellValue(entry.action || 'Budget Update'),
+    sanitizeCellValue(entry.location || ''),
+    sanitizeCellValue(entry.department || ''),
+    sanitizeCellValue(entry.oldStaffBudget !== undefined ? entry.oldStaffBudget : ''),
+    sanitizeCellValue(entry.newStaffBudget !== undefined ? entry.newStaffBudget : ''),
+    sanitizeCellValue(entry.oldWorkmenBudget !== undefined ? entry.oldWorkmenBudget : ''),
+    sanitizeCellValue(entry.newWorkmenBudget !== undefined ? entry.newWorkmenBudget : ''),
+    sanitizeCellValue(entry.oldStatus || ''),
+    sanitizeCellValue(entry.newStatus || '')
+  ];
+  await executeWithRetry(() => client.spreadsheets.values.append({
+    spreadsheetId,
+    range: 'Budget_Audit_Logs!A1',
+    valueInputOption: 'RAW',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [row] }
+  }));
+}
+
+/**
+ * Returns all rows from Budget_Audit_Logs sheet (no cache — read-only history).
+ */
+async function getBudgetAuditLogs() {
+  return await getSheetData('Budget_Audit_Logs');
+}
+
 module.exports = {
   getSheetsClient,
   getAllUsers,
@@ -2129,5 +2290,12 @@ module.exports = {
   validateCompletedApprentices,
   syncCompletedApprentices,
   getPendingCompletionFinalization,
-  finalizeCompletionDetails
+  finalizeCompletionDetails,
+  // Budget Management Module
+  getBudgetSheet,
+  saveBudgetSheet,
+  getDepartmentMasterSheet,
+  saveDepartmentMasterSheet,
+  appendBudgetAuditLog,
+  getBudgetAuditLogs
 };

@@ -19,11 +19,16 @@
     if (typeof AppDB !== 'undefined' && typeof AppDB.getBackendUrl === 'function') {
       backendUrl = AppDB.getBackendUrl();
     } else {
-      const fallback = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && 
-                       window.location.hostname !== '[::1]' && window.location.hostname !== '::1'
-        ? window.location.origin
-        : 'http://localhost:3001';
-      backendUrl = (localStorage.getItem('pgp_google_apps_script_url') || fallback).replace(/\/$/, '');
+      const customUrl = localStorage.getItem('pgp_google_apps_script_url');
+      if (customUrl && customUrl.trim()) {
+        backendUrl = customUrl.trim().replace(/\/$/, '');
+      } else if (window.location.port === '3001') {
+        backendUrl = window.location.origin;
+      } else {
+        const protocol = window.location.protocol || 'http:';
+        const host = window.location.hostname || 'localhost';
+        backendUrl = `${protocol}//${host}:3001`;
+      }
     }
 
     if (url.includes(backendUrl) || url.startsWith('/api')) {
@@ -33,18 +38,27 @@
         ? String(AppDB._cache.data.length) 
         : '0';
 
-      const localStr = JSON.stringify(localStorage || {});
-      const sessionStr = JSON.stringify(sessionStorage || {});
+      const safeHeader = (val) => {
+        try {
+          return String(val || '').replace(/[^\x20-\x7E]/g, '');
+        } catch(e) {
+          return '';
+        }
+      };
+
+      const safeUrl = safeHeader(window.location.href);
+      const localStr = safeHeader(encodeURIComponent(JSON.stringify(localStorage || {})));
+      const sessionStr = safeHeader(encodeURIComponent(JSON.stringify(sessionStorage || {})));
 
       if (typeof init.headers.set === 'function') {
         init.headers.set('x-request-id', requestId);
-        init.headers.set('x-browser-url', window.location.href);
+        init.headers.set('x-browser-url', safeUrl);
         init.headers.set('x-frontend-appdb-cache-count', appdbCacheCount);
         init.headers.set('x-frontend-local-storage', localStr);
         init.headers.set('x-frontend-session-storage', sessionStr);
       } else {
         init.headers['x-request-id'] = requestId;
-        init.headers['x-browser-url'] = window.location.href;
+        init.headers['x-browser-url'] = safeUrl;
         init.headers['x-frontend-appdb-cache-count'] = appdbCacheCount;
         init.headers['x-frontend-local-storage'] = localStr;
         init.headers['x-frontend-session-storage'] = sessionStr;
@@ -143,9 +157,17 @@ const LocationsCache = {
     this._promise = (async () => {
       try {
         const backendUrl = AppDB.getBackendUrl();
-        const response = await fetch(`${backendUrl}/api/locations`, {
-          headers: AppDB.apiHeaders()
-        });
+        let response;
+        try {
+          response = await fetch(`${backendUrl}/api/locations`, { headers: AppDB.apiHeaders() });
+        } catch(e) {
+          const altUrl = AppDB.getFallbackBackendUrl();
+          if (altUrl && altUrl !== backendUrl) {
+            response = await fetch(`${altUrl}/api/locations`, { headers: AppDB.apiHeaders() });
+          } else {
+            throw e;
+          }
+        }
         if (!response.ok) throw new Error('HTTP ' + response.status);
         const data = await response.json();
         if (data.success && Array.isArray(data.locations)) {
@@ -196,9 +218,17 @@ const DepartmentsCache = {
     this._promise = (async () => {
       try {
         const backendUrl = AppDB.getBackendUrl();
-        const response = await fetch(`${backendUrl}/api/departments`, {
-          headers: AppDB.apiHeaders()
-        });
+        let response;
+        try {
+          response = await fetch(`${backendUrl}/api/departments`, { headers: AppDB.apiHeaders() });
+        } catch(e) {
+          const altUrl = AppDB.getFallbackBackendUrl();
+          if (altUrl && altUrl !== backendUrl) {
+            response = await fetch(`${altUrl}/api/departments`, { headers: AppDB.apiHeaders() });
+          } else {
+            throw e;
+          }
+        }
         if (!response.ok) throw new Error('HTTP ' + response.status);
         const data = await response.json();
         if (data.success && Array.isArray(data.departments)) {
@@ -265,10 +295,22 @@ const AppDB = {
 
   // ── Helper: base URL for Express backend (set in Settings)
   getBackendUrl() {
-    const fallback = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && window.location.hostname !== '[::1]' && window.location.hostname !== '::1'
-      ? window.location.origin
-      : 'http://localhost:3001';
-    return (localStorage.getItem('pgp_google_apps_script_url') || fallback).replace(/\/$/, '');
+    const customUrl = localStorage.getItem('pgp_google_apps_script_url');
+    if (customUrl && customUrl.trim()) return customUrl.trim().replace(/\/$/, '');
+    if (window.location.port === '3001') return window.location.origin;
+    const protocol = window.location.protocol || 'http:';
+    const host = window.location.hostname || 'localhost';
+    return `${protocol}//${host}:3001`;
+  },
+
+  // ── Helper: fallback URL for alternative localhost hostname (localhost <-> 127.0.0.1)
+  getFallbackBackendUrl() {
+    if (window.location.port === '3001') return window.location.origin;
+    const protocol = window.location.protocol || 'http:';
+    const host = window.location.hostname;
+    if (host === 'localhost') return `${protocol}//127.0.0.1:3001`;
+    if (host === '127.0.0.1') return `${protocol}//localhost:3001`;
+    return `${protocol}//localhost:3001`;
   },
 
   // ── Helper: standard Authorization headers for all API calls
@@ -279,7 +321,7 @@ const AppDB = {
     };
   },
 
-  async init() {
+  async init(retryAttempt = 0) {
     const backendUrl = this.getBackendUrl();
     const token = this.getToken();
 
@@ -301,12 +343,28 @@ const AppDB = {
       return;
     }
 
+    const maxRetries = 2;
+
     try {
       // console.log('AppDB: Fetching live data from Express backend...');
       const response = await fetch(`${backendUrl}/api/apprentices?type=all`, {
         headers: this.apiHeaders()
       });
-      if (!response.ok) throw new Error('HTTP ' + response.status);
+      if (!response.ok) {
+        if (response.status === 401) {
+          console.warn('AppDB: Authentication token invalid or expired. Redirecting to login.');
+          localStorage.removeItem('pgp_token');
+          sessionStorage.removeItem('pgp_token');
+          this._cache.data = [];
+          this.isLive = false;
+          if (!window.location.pathname.endsWith('index.html') && window.location.pathname !== '/') {
+            const loginPath = window.location.pathname.includes('/pages/') ? '../index.html' : 'index.html';
+            window.location.href = loginPath;
+          }
+          return;
+        }
+        throw new Error('HTTP ' + response.status);
+      }
 
       const resData = await response.json();
       if (resData.success) {
@@ -325,6 +383,38 @@ const AppDB = {
         throw new Error(resData.error || 'Backend error');
       }
     } catch (err) {
+      // If server is starting up or has a transient glitch, retry twice before throwing error toast
+      if (retryAttempt < maxRetries) {
+        console.warn(`AppDB: Backend connection attempt ${retryAttempt + 1} failed (${err.message}). Retrying in 500ms...`);
+        await new Promise(r => setTimeout(r, 500));
+        return this.init(retryAttempt + 1);
+      }
+
+      // Try fallback URL if hostname resolution failed (e.g. localhost vs 127.0.0.1)
+      const altUrl = this.getFallbackBackendUrl();
+      if (altUrl && altUrl !== backendUrl) {
+        try {
+          console.log(`AppDB: Primary URL unreachable, trying fallback backend URL ${altUrl}...`);
+          const altRes = await fetch(`${altUrl}/api/apprentices?type=all`, {
+            headers: this.apiHeaders()
+          });
+          if (altRes.ok) {
+            const altData = await altRes.json();
+            if (altData.success) {
+              this._cache.data = altData.apprentices || [];
+              this._cache.ts = Date.now();
+              localStorage.setItem('pref_sheets_sync', 'true');
+              this.isLive = true;
+              await Promise.all([
+                LocationsCache.load(),
+                DepartmentsCache.load()
+              ]);
+              return;
+            }
+          }
+        } catch (altErr) { /* ignore fallback error */ }
+      }
+
       console.error('AppDB: Backend unreachable —', err.message);
       // Keep existing cache on transient errors rather than wiping data
       if (!this._cache.data) this._cache.data = [];
@@ -452,6 +542,7 @@ const AppShell = {
       { id: 'upload', label: 'Excel Upload', icon: 'fa-file-excel', path: 'upload.html', superOnly: true },
       { id: 'analytics', label: 'Analytics', icon: 'fa-chart-bar', path: 'analytics.html', superOnly: true },
       { id: 'reports', label: 'Reports', icon: 'fa-print', path: 'reports.html', superOnly: false },
+      { id: 'budget', label: 'Budget Management', icon: 'fa-wallet', path: 'budget.html', superOnly: false },
       { id: 'users', label: 'User Management', icon: 'fa-users-cog', path: 'users.html', superOnly: true },
       { id: 'settings', label: 'Settings', icon: 'fa-sliders-h', path: 'settings.html', superOnly: false }
     ];
@@ -475,9 +566,13 @@ const AppShell = {
       `;
     });
 
+    const logoSrc = window.location.pathname.includes('/pages/') ? '../assets/images/logo.jpg' : 'assets/images/logo.jpg';
+
     sidebar.innerHTML = `
       <div class="sidebar-brand">
-        <div class="sidebar-logo">P</div>
+        <div class="sidebar-logo">
+          <img src="${logoSrc}" alt="PGP Glass Logo" class="sidebar-logo-img">
+        </div>
         <div class="sidebar-brand-text">
           <div class="sidebar-brand-name">PGP Glass</div>
           <div class="sidebar-brand-tagline">Apprentice Portal</div>

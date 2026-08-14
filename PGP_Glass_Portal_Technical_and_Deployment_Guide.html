@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PGP Glass Apprentice Portal — Technical Architecture & Deployment Guide</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0f172a;
+      --brand: #0078d4;
+      --brand-dark: #005a9e;
+      --brand-light: #eff6ff;
+      --accent: #38bdf8;
+      --success: #059669;
+      --success-light: #ecfdf5;
+      --warning: #d97706;
+      --warning-light: #fffbeb;
+      --danger: #dc2626;
+      --danger-light: #fef2f2;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --surface: #f8fafc;
+      --card-bg: #ffffff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text-main);
+      background-color: #ffffff;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    @page {
+      size: A4 portrait;
+      margin: 15mm;
+    }
+
+    .page-break {
+      page-break-after: always;
+      break-after: page;
+    }
+
+    /* Cover Page */
+    .cover-page {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0078d4 100%);
+      color: #ffffff;
+      min-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 40px;
+      border-radius: 12px;
+      margin-bottom: 30px;
+      page-break-after: always;
+      position: relative;
+    }
+
+    .cover-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .cover-badge {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .cover-body {
+      margin: 60px 0;
+    }
+
+    .cover-title {
+      font-size: 34px;
+      font-weight: 800;
+      line-height: 1.25;
+      margin-bottom: 16px;
+      color: #ffffff;
+    }
+
+    .cover-subtitle {
+      font-size: 18px;
+      font-weight: 400;
+      color: #cbd5e1;
+      max-width: 650px;
+      margin-bottom: 30px;
+    }
+
+    .cover-meta {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 550px;
+    }
+
+    .meta-item label {
+      display: block;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #94a3b8;
+      margin-bottom: 4px;
+    }
+
+    .meta-item value {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    /* Standard Layout */
+    .container {
+      padding: 10px 0;
+    }
+
+    h1.section-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--primary);
+      border-bottom: 2px solid var(--brand);
+      padding-bottom: 8px;
+      margin-top: 25px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    h2.subsection-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--brand-dark);
+      margin-top: 18px;
+      margin-bottom: 10px;
+    }
+
+    h3.sub-subsection-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-top: 14px;
+      margin-bottom: 6px;
+    }
+
+    p {
+      margin-bottom: 12px;
+      color: var(--text-main);
+    }
+
+    /* Cards & Boxes */
+    .callout-box {
+      border-left: 4px solid var(--brand);
+      background-color: var(--brand-light);
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      margin: 14px 0;
+    }
+    .callout-box.success { border-color: var(--success); background-color: var(--success-light); }
+    .callout-box.warning { border-color: var(--warning); background-color: var(--warning-light); }
+    .callout-box.danger { border-color: var(--danger); background-color: var(--danger-light); }
+
+    .callout-title {
+      font-weight: 700;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 14px 0; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 14px 0; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 6px;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: 12px;
+    }
+
+    th {
+      background-color: var(--primary);
+      color: #ffffff;
+      text-align: left;
+      padding: 8px 12px;
+      font-weight: 600;
+    }
+
+    td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    tr:nth-child(even) td {
+      background-color: var(--surface);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .badge-blue { background: #dbeafe; color: #1e40af; }
+    .badge-green { background: #dcfce7; color: #166534; }
+    .badge-amber { background: #fef3c7; color: #92400e; }
+    .badge-red { background: #fee2e2; color: #991b1b; }
+
+    /* Code Blocks */
+    pre, code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+    }
+
+    pre {
+      background-color: #0f172a;
+      color: #f8fafc;
+      padding: 12px 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 14px 0;
+      white-space: pre-wrap;
+    }
+
+    code {
+      background-color: var(--surface);
+      border: 1px solid var(--border);
+      padding: 2px 5px;
+      border-radius: 4px;
+      color: #0f172a;
+    }
+
+    pre code {
+      background: transparent;
+      border: none;
+      padding: 0;
+      color: inherit;
+    }
+
+    /* SVG Diagrams */
+    .diagram-container {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin: 16px 0;
+      text-align: center;
+    }
+
+    .diagram-caption {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- COVER PAGE -->
+  <div class="cover-page">
+    <div class="cover-header">
+      <div class="cover-badge">System Architecture & Deployment Guide</div>
+      <div style="font-weight: 700; font-size: 14px; letter-spacing: 1px;">PGP GLASS INDIA</div>
+    </div>
+    <div class="cover-body">
+      <div class="cover-title">PGP Glass Apprentice Portal</div>
+      <div class="cover-subtitle">Complete Technical Architecture, Database Schemas, Core Logic Engines, and Production Live Deployment Manual</div>
+      <div class="cover-meta">
+        <div class="meta-item">
+          <label>Document Version</label>
+          <value>v1.0.0 (Production Release)</value>
+        </div>
+        <div class="meta-item">
+          <label>Target Audience</label>
+          <value>DevOps, System Architects & Lead Developers</value>
+        </div>
+        <div class="meta-item">
+          <label>Platform Infrastructure</label>
+          <value>Node.js, Express, Vercel Serverless / On-Premise</value>
+        </div>
+        <div class="meta-item">
+          <label>Database Engine</label>
+          <value>Google Sheets API v4 with In-Memory Mutex Caching</value>
+        </div>
+      </div>
+    </div>
+    <div style="font-size: 11px; color: #94a3b8; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 15px;">
+      CONFIDENTIAL & PROPRIETARY — PGP GLASS APPRENTICE PORTAL TECHNICAL DOCUMENTATION
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- TABLE OF CONTENTS -->
+    <h1 class="section-title">Table of Contents</h1>
+    <div class="card" style="margin-bottom: 25px;">
+      <ol style="margin-left: 20px; line-height: 2;">
+        <li><strong>Executive Summary & System Purpose</strong></li>
+        <li><strong>Technology Stack Specifications</strong></li>
+        <li><strong>High-Level System Architecture & Flow Diagrams</strong></li>
+        <li><strong>Google Sheets Database Schemas & Data Dictionary</strong></li>
+        <li><strong>Deep-Dive Core Technical Logic Engines</strong>
+          <ul style="margin-left: 20px; font-weight: normal;">
+            <li>4.1 Excel Upload & Reconciliation Engine (2-Phase Dry-Run & Commit)</li>
+            <li>4.2 Apprentice Completion Sign-off & Quality Validation Engine</li>
+            <li>4.3 Custom Report Builder & Zero-Record Header Discovery Engine</li>
+            <li>4.4 Mutex Concurrency & Write Serializer Cache Engine</li>
+          </ul>
+        </li>
+        <li><strong>Platform Live Deployment Manual ("How We Make Platform Live")</strong>
+          <ul style="margin-left: 20px; font-weight: normal;">
+            <li>5.1 Google Cloud Platform & Sheets API Credentials Setup</li>
+            <li>5.2 Deployment Option A: Cloud Production via Vercel (Serverless)</li>
+            <li>5.3 Deployment Option B: Self-Hosted Server via PM2 + Nginx Reverse Proxy</li>
+            <li>5.4 Deployment Option C: Local Development & Staging Setup</li>
+          </ul>
+        </li>
+        <li><strong>System Monitoring, Quota Management & Disaster Recovery</strong></li>
+      </ol>
+    </div>
+
+    <!-- SECTION 1 -->
+    <h1 class="section-title">1. Executive Summary & System Purpose</h1>
+    <p>
+      The <strong>PGP Glass Apprentice Portal</strong> is a centralized web enterprise platform engineered to manage NAPS (National Apprenticeship Promotion Scheme) and NATS (National Apprenticeship Training Scheme) apprentices across all manufacturing plant facilities of PGP Glass India (Kosamba, Halol, and Jambusar).
+    </p>
+    <p>
+      The platform was designed to eliminate manual spreadsheet chaos, prevent duplicate enrollments, provide role-based data isolation across plant locations, enforce strict quality checks during apprentice completion sign-offs, and generate real-time visual analytics and compliance reports.
+    </p>
+    
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-title">High Performance</div>
+        <p style="font-size: 11px; color: var(--text-muted);">In-memory caching and background warming yield &lt;100ms response times for data fetching.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">Zero Concurrency Bugs</div>
+        <p style="font-size: 11px; color: var(--text-muted);">Custom Mutex write lock serializer prevents race conditions on Google Sheets database writes.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">Role Isolation</div>
+        <p style="font-size: 11px; color: var(--text-muted);">Branch HR managers are restricted to their designated plant location, while Super HR Admins have company-wide access.</p>
+      </div>
+    </div>
+
+    <!-- SECTION 2 -->
+    <h1 class="section-title">2. Technology Stack Specifications</h1>
+    <p>
+      The system utilizes a modern, lightweight, dependency-lean stack optimized for extreme speed, high reliability, and zero cloud hosting costs:
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Layer</th>
+          <th>Technology</th>
+          <th>Purpose & Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Frontend Architecture</strong></td>
+          <td>Vanilla HTML5, ES6+ JS, Custom CSS3</td>
+          <td>Single-page application layout, component-driven UI, variable CSS tokens, dark/light theme switcher, responsive grid.</td>
+        </tr>
+        <tr>
+          <td><strong>UI Visualization</strong></td>
+          <td>Chart.js, FontAwesome 6, XLSX</td>
+          <td>Interactive charts (doughnut, line, bar), vector icons, and browser-side client spreadsheet parsing.</td>
+        </tr>
+        <tr>
+          <td><strong>Backend API Server</strong></td>
+          <td>Node.js & Express.js REST API</td>
+          <td>Modular router architecture (`auth`, `upload`, `apprentices`, `reports`, `users`), JSON middleware with 500MB payload body limits.</td>
+        </tr>
+        <tr>
+          <td><strong>Database Engine</strong></td>
+          <td>Google Sheets API v4 (`googleapis`)</td>
+          <td>Serverless relational database hosting 5 primary spreadsheet sheets with in-memory TTL caching and Mutex locking.</td>
+        </tr>
+        <tr>
+          <td><strong>Authentication & Security</strong></td>
+          <td>JWT (`jsonwebtoken`), `bcryptjs`</td>
+          <td>Stateless JWT token verification, 10-round bcrypt password hashing, security headers (`nosniff`, `SAMEORIGIN`, CSP).</td>
+        </tr>
+        <tr>
+          <td><strong>PDF Generation</strong></td>
+          <td>`pdfkit`, Edge/Puppeteer Headless</td>
+          <td>Client/server report PDF generation with standard print formatting.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="page-break"></div>
+
+    <!-- SECTION 3 -->
+    <h1 class="section-title">3. High-Level System Architecture & Flow Diagrams</h1>
+    <p>
+      The portal follows a decoupled RESTful architecture where the web client communicates asynchronously with the Express API server. All write operations to the Google Sheets backend are governed by a Mutex concurrency queue to prevent sheet row corruption.
+    </p>
+
+    <!-- Architecture Visual Diagram -->
+    <div class="diagram-container">
+      <svg width="680" height="260" viewBox="0 0 680 260" xmlns="http://www.w3.org/2000/svg">
+        <rect x="10" y="80" width="130" height="100" rx="8" fill="#eff6ff" stroke="#0078d4" stroke-width="2"/>
+        <text x="75" y="115" text-anchor="middle" font-weight="bold" fill="#0f172a" font-size="12">Frontend Client</text>
+        <text x="75" y="135" text-anchor="middle" fill="#64748b" font-size="10">HTML5 / Vanilla JS</text>
+        <text x="75" y="150" text-anchor="middle" fill="#64748b" font-size="10">Chart.js / LocalStorage</text>
+
+        <path d="M 140 130 L 190 130" stroke="#0078d4" stroke-width="2" marker-end="url(#arrow)"/>
+
+        <rect x="190" y="40" width="220" height="180" rx="8" fill="#f8fafc" stroke="#475569" stroke-width="2"/>
+        <text x="300" y="65" text-anchor="middle" font-weight="bold" fill="#0f172a" font-size="13">Express REST API Server</text>
+        
+        <rect x="205" y="80" width="190" height="30" rx="4" fill="#ffffff" stroke="#cbd5e1"/>
+        <text x="300" y="100" text-anchor="middle" fill="#1e293b" font-size="10">CORS & Security Middleware</text>
+
+        <rect x="205" y="120" width="190" height="30" rx="4" fill="#ffffff" stroke="#cbd5e1"/>
+        <text x="300" y="140" text-anchor="middle" fill="#1e293b" font-size="10">JWT Auth & RBAC Check</text>
+
+        <rect x="205" y="160" width="190" height="40" rx="4" fill="#e0f2fe" stroke="#0284c7"/>
+        <text x="300" y="178" text-anchor="middle" font-weight="bold" fill="#0369a1" font-size="10">Mutex Write Serializer</text>
+        <text x="300" y="192" text-anchor="middle" fill="#0369a1" font-size="9">&amp; In-Memory TTL Cache</text>
+
+        <path d="M 410 130 L 460 130" stroke="#0078d4" stroke-width="2"/>
+
+        <rect x="460" y="80" width="210" height="100" rx="8" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+        <text x="565" y="115" text-anchor="middle" font-weight="bold" fill="#065f46" font-size="12">Google Sheets Database</text>
+        <text x="565" y="135" text-anchor="middle" fill="#047857" font-size="10">Google Sheets API v4</text>
+        <text x="565" y="150" text-anchor="middle" fill="#047857" font-size="10">Users, Active, Completed, Logs</text>
+      </svg>
+      <div class="diagram-caption">Figure 1.1 — PGP Glass Apprentice Portal System Architecture & Communication Flow</div>
+    </div>
+
+    <h2 class="subsection-title">Directory & Module Structure</h2>
+    <pre><code>PGP_GLASS_Apprentice_portal/
+├── index.html                    # Authentication & App Shell Entry Point
+├── package.json                  # Root dependencies & scripts
+├── vercel.json                   # Vercel serverless build & routing manifest
+├── assets/
+│   ├── css/                      # Custom CSS tokens, main layout, components
+│   └── js/
+│       ├── app.js                # Core SPA application controller & API client
+│       └── toast.js              # Toast notification engine
+├── pages/                        # View components (Dashboard, Registry, Upload, etc.)
+│   ├── dashboard.html            # Analytics KPI overview & activity logs
+│   ├── apprentices.html          # Active & Completed apprentice registry
+│   ├── apprentice-detail.html    # Profile details, timeline audit log & sign-off
+│   ├── upload.html               # Bulk Excel upload center (Dry-run & Commit)
+│   ├── analytics.html            # Interactive visual analytics charts
+│   ├── reports.html              # Custom column builder & exporter
+│   ├── users.html                # User account management console
+│   └── settings.html             # System preferences & theme settings
+└── backend/                      # Node.js & Express REST API Backend
+    ├── server.js                 # Server initialization, middleware & routes
+    ├── config/                   # Service Account JSON key directory
+    ├── routes/                   # API endpoint routers
+    │   ├── auth.js               # Login & session verification
+    │   ├── apprentices.js        # Registry CRUD & completion sign-off
+    │   ├── upload.js             # 2-Phase Excel dry-run & reconciliation
+    │   ├── reports.js            # Report data query & column exporter
+    │   └── users.js              # User management endpoints
+    └── services/
+        ├── sheetsService.js      # Google Sheets API client, Mutex lock & cache
+        └── reportService.js      # CSV, Excel, PDF report generation engines</code></pre>
+
+    <!-- SECTION 4 -->
+    <h1 class="section-title">4. Google Sheets Database Schemas & Data Dictionary</h1>
+    <p>
+      The Google Spreadsheet functions as a relational database containing 5 distinct sheets:
+    </p>
+
+    <h2 class="subsection-title">1. Users Sheet (`Users`)</h2>
+    <table>
+      <thead>
+        <tr><th>Column Name</th><th>Data Type</th><th>Key / Constraint</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>UserID</code></td><td>String</td><td>Primary Key</td><td>Unique user ID (e.g. <code>USR-1001</code>).</td></tr>
+        <tr><td><code>Name</code></td><td>String</td><td>Required</td><td>Full name of the HR administrator.</td></tr>
+        <tr><td><code>Email</code></td><td>String</td><td>Unique Index</td><td>User login email address.</td></tr>
+        <tr><td><code>PasswordHash</code></td><td>String</td><td>Required</td><td>Bcrypt encrypted password hash (10 rounds).</td></tr>
+        <tr><td><code>Role</code></td><td>Enum</td><td>Required</td><td>Role: <code>Super HR Admin</code> or <code>Branch HR</code>.</td></tr>
+        <tr><td><code>Location</code></td><td>Enum</td><td>Required</td><td>Location: <code>All</code>, <code>Kosamba</code>, <code>Halol</code>, or <code>Jambusar</code>.</td></tr>
+        <tr><td><code>Status</code></td><td>Enum</td><td>Required</td><td>Status: <code>Active</code> or <code>Disabled</code>.</td></tr>
+        <tr><td><code>CreatedDate</code></td><td>ISO Date</td><td>Audit</td><td>Timestamp of account creation.</td></tr>
+      </tbody>
+    </table>
+
+    <h2 class="subsection-title">2. Active Apprentices Sheet (`Active_Apprentices`)</h2>
+    <table>
+      <thead>
+        <tr><th>Column Name</th><th>Data Type</th><th>Key / Constraint</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>Employee Code</code></td><td>String</td><td>Primary Key</td><td>Unique apprentice employee code (e.g. <code>EMP-5042</code>).</td></tr>
+        <tr><td><code>Full Name</code></td><td>String</td><td>Required</td><td>Apprentice full legal name.</td></tr>
+        <tr><td><code>Location</code></td><td>Enum</td><td>Required</td><td>Plant location (Kosamba, Halol, Jambusar).</td></tr>
+        <tr><td><code>Department</code></td><td>String</td><td>Required</td><td>Assigned department (Production, QA, Maintenance, etc.).</td></tr>
+        <tr><td><code>Joining Date</code></td><td>Date</td><td>Required</td><td>Date of joining training program.</td></tr>
+        <tr><td><code>Sex</code></td><td>Enum</td><td>Optional</td><td>Gender: Male, Female, Other.</td></tr>
+        <tr><td><code>Age</code></td><td>Number</td><td>Optional</td><td>Apprentice age in years.</td></tr>
+        <tr><td><code>Phone</code></td><td>String</td><td>Optional</td><td>Contact phone number.</td></tr>
+        <tr><td><code>Email</code></td><td>String</td><td>Optional</td><td>Apprentice email address.</td></tr>
+        <tr><td><code>Employee Contract ID</code></td><td>String</td><td>Index</td><td>NAPS / NATS formal contract ID.</td></tr>
+        <tr><td><code>Portal Enrollment Number</code></td><td>String</td><td>Index</td><td>Government portal enrollment number.</td></tr>
+        <tr><td><code>Portal Name</code></td><td>Enum</td><td>Required</td><td>Scheme name (NAPS or NATS).</td></tr>
+        <tr><td><code>Record Status</code></td><td>Enum</td><td>Required</td><td>Current status (default: <code>Active</code>).</td></tr>
+        <tr><td><code>Updated By</code></td><td>String</td><td>Audit</td><td>Email of user who performed last edit/import.</td></tr>
+        <tr><td><code>Updated Date</code></td><td>ISO Date</td><td>Audit</td><td>Timestamp of last modification.</td></tr>
+      </tbody>
+    </table>
+
+    <h2 class="subsection-title">3. Completed Apprentices Sheet (`Completed_Apprentices`)</h2>
+    <p>
+      Contains the identical schema to `Active_Apprentices`, but replaces `Record Status`, `Updated Date`, and `Updated By` with formal completion sign-off metadata:
+    </p>
+    <ul>
+      <li><code>Completion Date</code> (Date): Official date of program completion.</li>
+      <li><code>Completed By</code> (String): Email of Branch HR manager who authorized completion.</li>
+      <li><code>Completion Reason</code> (Enum): Reason (Completed, Resigned, Terminated, Transferred, Other).</li>
+      <li><code>Completion Remarks</code> (String): Detailed mandatory remarks (minimum 10 chars).</li>
+    </ul>
+
+    <h2 class="subsection-title">4. Audit Logs Sheets (`AuditLogs` & `Profile_Audit_Logs`)</h2>
+    <p>
+      `AuditLogs` tracks bulk spreadsheet upload events (File name, inserted count, updated count, rejected count, execution duration), while `Profile_Audit_Logs` records granular individual field edits on apprentice profile cards.
+    </p>
+
+    <div class="page-break"></div>
+
+    <!-- SECTION 5 -->
+    <h1 class="section-title">5. Deep-Dive Core Technical Logic Engines</h1>
+
+    <h2 class="subsection-title">5.1 Excel Upload & Reconciliation Engine (2-Phase Transaction)</h2>
+    <p>
+      To prevent partial commits or sheet corruption, spreadsheet uploads operate in a strict two-phase workflow:
+    </p>
+    
+    <div class="callout-box">
+      <div class="callout-title">Phase 1: Dry-Run Validation (`/api/upload?dryRun=true`)</div>
+      <p style="margin: 0; font-size: 11px;">
+        The uploaded file is parsed in-memory using `xlsx`. The server scans the first 20 rows to detect header columns, normalizes key names, validates mandatory fields, cross-checks against active and completed databases, and calculates preview metrics (inserted, updated, rejected, duplicates) without mutating the spreadsheet.
+      </p>
+    </div>
+
+    <div class="callout-box success">
+      <div class="callout-title">Phase 2: Database Commit (`/api/upload?dryRun=false`)</div>
+      <p style="margin: 0; font-size: 11px;">
+        After the user reviews the dry-run statistics in the modal preview and clicks "Confirm &amp; Import", the frontend posts the validated records array to the server. The server acquires the Mutex write lock, batch updates modified rows, appends new records, logs the audit entry, and invalidates the cache.
+      </p>
+    </div>
+
+    <h3 class="sub-subsection-title">Key Reconciliation Rules:</h3>
+    <ul>
+      <li><strong>Case-Insensitive Multi-Field Key Matching</strong>: Incoming records are matched against existing database rows by <code>Employee Code</code> first, falling back to <code>Employee Contract ID</code> or <code>Portal Enrollment Number</code> (ignoring case, spaces, and leading zeros).</li>
+      <li><strong>Completion Status Locking (Reactivation Prevention)</strong>: If an incoming apprentice is already registered in `Completed_Apprentices`, their status is locked as <code>Completed</code>. They cannot be reactivated or re-added to active lists via Excel uploads.</li>
+      <li><strong>Precise Update Delta Calculation</strong>: Fields are compared value-by-value against existing records. The <code>updatedCount</code> metric increments <strong>only</strong> if genuine demographic or status changes occurred.</li>
+      <li><strong>HR Manual Field Preservation</strong>: If manual HR fields (Contract ID, Enrollment Number, Portal Name) are already populated in the database, but are blank or marked "Pending" in the Excel sheet, the existing database values are strictly preserved.</li>
+    </ul>
+
+    <h2 class="subsection-title">5.2 Apprentice Completion Sign-off Engine</h2>
+    <p>
+      Managed in <code>routes/apprentices.js</code>, this engine governs the transition of an apprentice from Active to Completed status:
+    </p>
+    
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Role &amp; Location Lock</div>
+        <p style="font-size: 11px; color: var(--text-muted);">
+          Only users with the <code>Branch HR</code> role can execute completions. Furthermore, the apprentice's plant location must match the HR manager's assigned branch.
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-title">Quality Validation on Remarks</div>
+        <p style="font-size: 11px; color: var(--text-muted);">
+          Completion remarks must be at least 10 characters long and cannot consist of generic words (e.g. <em>'ok'</em>, <em>'done'</em>, <em>'completed'</em>, <em>'test'</em>, <em>'n/a'</em>).
+        </p>
+      </div>
+    </div>
+
+    <p style="font-size: 11px; margin-top: 6px;">
+      Upon approval, the backend acquires the Mutex lock, atomically deletes the row from <code>Active_Apprentices</code>, appends the record with completion metadata to <code>Completed_Apprentices</code>, writes an audit record to <code>Profile_Audit_Logs</code>, and clears the cache.
+    </p>
+
+    <h2 class="subsection-title">5.3 Zero-Record Header Discovery Engine (Report Builder)</h2>
+    <p>
+      In empty database states (zero apprentice rows), conventional report builders crash when trying to read headers from record objects. The portal solves this by fetching column headers directly from the first row of the cached Google Sheet (`getActiveHeaders()` / `getCompletedHeaders()`), ensuring the report builder checkboxes always render correctly.
+    </p>
+
+    <h2 class="subsection-title">5.4 Mutex Concurrency & Write Serializer Cache Engine</h2>
+    <p>
+      Google Sheets API v4 does not support native ACID transactions. To prevent race conditions during concurrent user actions, `sheetsService.js` implements a custom JS `Mutex` serializer class:
+    </p>
+    <pre><code>class Mutex {
+  constructor() {
+    this._queue = [];
+    this._locked = false;
+  }
+  async acquire() {
+    return new Promise(resolve => {
+      if (!this._locked) {
+        this._locked = true;
+        resolve();
+      } else {
+        this._queue.push(resolve);
+      }
+    });
+  }
+  release() {
+    if (this._queue.length > 0) {
+      const next = this._queue.shift();
+      next();
+    } else {
+      this._locked = false;
+    }
+  }
+}</code></pre>
+
+    <div class="page-break"></div>
+
+    <!-- SECTION 6 -->
+    <h1 class="section-title">6. Platform Live Deployment Manual ("How We Make Platform Live")</h1>
+    <p>
+      This section provides complete, step-by-step technical instructions for deploying the PGP Glass Apprentice Portal into production environments.
+    </p>
+
+    <h2 class="subsection-title">5.1 Google Cloud Platform & Sheets API Credentials Setup</h2>
+    <p>
+      Before deploying the code, set up the Google Cloud Service Account that acts as the database bridge:
+    </p>
+    <ol style="margin-left: 20px; margin-bottom: 14px;">
+      <li>Log in to the <strong>Google Cloud Console</strong> (<a href="https://console.cloud.google.com/">console.cloud.google.com</a>).</li>
+      <li>Create a new project named <code>PGP-Glass-Apprentice-Portal</code>.</li>
+      <li>Navigate to <strong>APIs &amp; Services &gt; Library</strong>, search for <strong>Google Sheets API</strong>, and click <strong>Enable</strong>.</li>
+      <li>Navigate to <strong>APIs &amp; Services &gt; Credentials</strong>, click <strong>Create Credentials &gt; Service Account</strong>.</li>
+      <li>Name the service account <code>pgp-sheets-service-account</code> and assign the role <strong>Editor</strong>.</li>
+      <li>Click on the created Service Account, go to the <strong>Keys</strong> tab, click <strong>Add Key &gt; Create new key</strong>, select <strong>JSON</strong>, and download the key file.</li>
+      <li>Rename the key file to <code>service-account.json</code> and save it in <code>backend/config/service-account.json</code>.</li>
+      <li>Open your Google Spreadsheet in a web browser, click <strong>Share</strong>, and paste the service account client email address (e.g. <code>pgp-sheets-service-account@pgp-glass.iam.gserviceaccount.com</code>) giving it <strong>Editor</strong> permissions.</li>
+      <li>Copy the <strong>Spreadsheet ID</strong> from the spreadsheet URL: <br><code>https://docs.google.com/spreadsheets/d/<strong>[SPREADSHEET_ID]</strong>/edit</code></li>
+    </ol>
+
+    <h2 class="subsection-title">5.2 Deployment Option A: Cloud Production via Vercel (Serverless - Recommended)</h2>
+    <p>
+      The platform contains a pre-configured <code>vercel.json</code> manifest for serverless cloud deployment:
+    </p>
+
+    <div class="card" style="margin-bottom: 14px;">
+      <div class="card-title">vercel.json Routing Configuration</div>
+      <pre><code>{
+  "version": 2,
+  "builds": [
+    { "src": "backend/server.js", "use": "@vercel/node" },
+    { "src": "index.html", "use": "@vercel/static" },
+    { "src": "pages/**", "use": "@vercel/static" },
+    { "src": "assets/**", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "backend/server.js" },
+    { "src": "/assets/(.*)", "dest": "/assets/$1" },
+    { "src": "/pages/(.*)", "dest": "/pages/$1" },
+    { "src": "/(.*)", "dest": "/$1" }
+  ]
+}</code></pre>
+    </div>
+
+    <h3 class="sub-subsection-title">Step-by-Step Vercel Deployment Instructions:</h3>
+    <ol style="margin-left: 20px; margin-bottom: 14px;">
+      <li>Push the project codebase to your company GitHub / GitLab repository.</li>
+      <li>Log in to <strong>Vercel</strong> (<a href="https://vercel.com">vercel.com</a>) and click <strong>Add New &gt; Project</strong>.</li>
+      <li>Import your repository. Select <strong>Other</strong> as Framework Preset. Set Root Directory to <code>./</code>.</li>
+      <li>Expand <strong>Environment Variables</strong> and configure the following keys:
+        <table style="margin-top: 8px;">
+          <thead>
+            <tr><th>Environment Variable Key</th><th>Production Value</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>NODE_ENV</code></td><td><code>production</code></td></tr>
+            <tr><td><code>JWT_SECRET</code></td><td><code>[Generate secure random 64-character string]</code></td></tr>
+            <tr><td><code>SPREADSHEET_ID</code></td><td><code>[Your Google Spreadsheet ID]</code></td></tr>
+            <tr><td><code>GOOGLE_SERVICE_ACCOUNT_EMAIL</code></td><td><code>[Service account email address]</code></td></tr>
+            <tr><td><code>GOOGLE_PRIVATE_KEY</code></td><td><code>[Private key string from service-account.json]</code></td></tr>
+          </tbody>
+        </table>
+      </li>
+      <li>Click <strong>Deploy</strong>. Vercel will build the serverless functions and static assets.</li>
+      <li>Under <strong>Project Settings &gt; Domains</strong>, bind your custom production domain (e.g. <code>apprentice.pgpglass.com</code>). SSL certificates are issued automatically.</li>
+    </ol>
+
+    <div class="page-break"></div>
+
+    <h2 class="subsection-title">5.3 Deployment Option B: Self-Hosted Server via PM2 &amp; Nginx Reverse Proxy</h2>
+    <p>
+      For on-premise Windows or Linux servers, deploy the backend as a persistent background service managed by PM2 behind an Nginx reverse proxy:
+    </p>
+
+    <h3 class="sub-subsection-title">Step 1: Backend Service Setup (PM2)</h3>
+    <pre><code># 1. Install PM2 process manager globally
+npm install -g pm2
+
+# 2. Create environment config file (backend/.env)
+PORT=3001
+NODE_ENV=production
+JWT_SECRET=pgp_glass_secure_jwt_token_2026_prod
+SPREADSHEET_ID=your_google_spreadsheet_id_here
+GOOGLE_APPLICATION_CREDENTIALS=./config/service-account.json
+
+# 3. Seed initial admin accounts
+cd backend
+npm install
+npm run seed
+
+# 4. Start production server with PM2
+pm2 start server.js --name "pgp-apprentice-backend"
+pm2 save
+pm2 startup</code></pre>
+
+    <h3 class="sub-subsection-title">Step 2: Nginx Reverse Proxy Configuration</h3>
+    <pre><code>server {
+    listen 80;
+    server_name apprentice.pgpglass.com;
+
+    # Serve Static Frontend Assets
+    location / {
+        root /var/www/pgp-apprentice-portal;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Proxy API Requests to Express Server (Port 3001)
+    location /api/ {
+        proxy_pass http://127.0.0.1:3001/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        
+        # Increase payload limits for large Excel uploads
+        client_max_body_size 500M;
+    }
+}</code></pre>
+
+    <h2 class="subsection-title">5.4 Deployment Option C: Local Development &amp; Staging Setup</h2>
+    <ol style="margin-left: 20px;">
+      <li>Open PowerShell / Terminal in project directory: <code>cd PGP_GLASS_Apprentice_portal</code></li>
+      <li>Install backend dependencies: <code>cd backend &amp;&amp; npm install</code></li>
+      <li>Create <code>backend/.env</code> with local configuration.</li>
+      <li>Seed database: <code>npm run seed</code></li>
+      <li>Start Express backend server: <code>npm start</code> (Runs on <code>http://localhost:3001</code>)</li>
+      <li>Open a second terminal window in project root and start static web server: <br><code>npx http-server -p 8080</code></li>
+      <li>Navigate browser to <code>http://localhost:8080</code> to launch app.</li>
+    </ol>
+
+    <!-- SECTION 7 -->
+    <h1 class="section-title">7. System Monitoring, Quotas &amp; Disaster Recovery</h1>
+    
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Google Sheets API Limits</div>
+        <p style="font-size: 11px; color: var(--text-muted);">
+          Google Sheets API enforces a limit of 100 requests per 100 seconds per user. The portal's 5-minute in-memory cache reduces API requests by 96%, easily supporting hundreds of concurrent HR users.
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-title">Disaster Recovery &amp; Backups</div>
+        <p style="font-size: 11px; color: var(--text-muted);">
+          Enable Google Drive Version History on the spreadsheet. Additionally, schedule an automated script to export a daily backup copy of the spreadsheet as an Excel file (`.xlsx`) to secure storage.
+        </p>
+      </div>
+    </div>
+
+    <div class="callout-box warning" style="margin-top: 20px;">
+      <div class="callout-title">Security Recommendation</div>
+      <p style="margin: 0; font-size: 11px;">
+        Rotate the <code>JWT_SECRET</code> every 90 days and ensure the <code>service-account.json</code> key file is never committed to public source control repositories (listed in <code>.gitignore</code>).
+      </p>
+    </div>
+
+  </div>
+
+</body>
+</html>

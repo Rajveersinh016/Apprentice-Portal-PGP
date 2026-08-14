@@ -61,11 +61,16 @@
     }
     .login-brand-logo {
       width: 52px; height: 52px;
-      background: linear-gradient(135deg, #0078d4, #7c3aed);
+      background: white;
       border-radius: 14px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 22px; font-weight: 800; color: white;
+      padding: 4px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
       flex-shrink: 0;
+    }
+    .login-brand-logo img {
+      width: 100%; height: 100%; object-fit: contain;
     }
     .login-brand-name { font-size: 22px; font-weight: 800; }
     .login-brand-tag  { font-size: 10px; opacity: 0.6; text-transform: uppercase; letter-spacing: 0.1em; }
@@ -417,7 +422,7 @@
 
   <!-- Loading Overlay -->
   <div class="loading-overlay" id="loading-overlay">
-    <div style="width:52px;height:52px;background:linear-gradient(135deg,#0078d4,#7c3aed);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:white;margin-bottom:4px;">P</div>
+    <div class="login-brand-logo" style="margin-bottom:4px;"><img src="assets/images/logo.jpg" alt="PGP Glass Logo"></div>
     <div class="loading-spinner-large"></div>
     <div class="loading-text">Loading Central Portal...</div>
   </div>
@@ -431,7 +436,7 @@
       <!-- Left Panel -->
       <div class="login-left">
         <div class="login-brand">
-          <div class="login-brand-logo">P</div>
+          <div class="login-brand-logo"><img src="assets/images/logo.jpg" alt="PGP Glass Logo"></div>
           <div>
             <div class="login-brand-name">PGP Glass</div>
             <div class="login-brand-tag">Apprentice Master Database</div>

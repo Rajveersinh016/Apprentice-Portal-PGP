@@ -15,10 +15,19 @@ const { requestStorage } = require('../utils/logger');
  */
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const activeRaw = await sheetsService.getActiveApprentices();
-    const completedRaw = await sheetsService.getCompletedApprentices();
+    const [activeRaw, completedRaw, masterRaw] = await Promise.all([
+      sheetsService.getActiveApprentices(),
+      sheetsService.getCompletedApprentices(),
+      sheetsService.getDepartmentMasterSheet()
+    ]);
 
     const deptSet = new Set();
+
+    (masterRaw || []).forEach(row => {
+      const status = String(row['Status'] || 'ACTIVE').trim().toUpperCase();
+      const dept   = String(row['Department'] || '').trim();
+      if (dept && status === 'ACTIVE') deptSet.add(dept);
+    });
 
     activeRaw.forEach(row => {
       const dept = String(row['Department'] || '').trim();

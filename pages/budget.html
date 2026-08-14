@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Budget Management &mdash; PGP Glass Apprentice Portal</title>
+  <meta name="description" content="Manage section-level departmental apprentice budgets, capacity allocation, and track live utilization across PGP Glass.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="../assets/css/main.css?v=3.0">
+  <link rel="stylesheet" href="../assets/css/sidebar.css?v=3.0">
+  <link rel="stylesheet" href="../assets/css/components.css?v=3.0">
+  <link rel="stylesheet" href="../assets/css/dashboard.css?v=3.0">
+  <link rel="stylesheet" href="../assets/css/responsive.css?v=3.0">
+  <link rel="stylesheet" href="../assets/css/budget.css?v=4.0">
+  <!-- Chart.js for charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- SheetJS for Excel import/export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<!-- Global Page Loader -->
+<div id="global-page-loader" class="global-page-loader">
+  <div class="loader-content">
+    <div class="loader-logo"><img src="../assets/images/logo.jpg" alt="PGP Glass Logo"></div>
+    <div class="loader-title">PGP Glass</div>
+    <div class="loader-text">Loading Section Budget Management...</div>
+    <div class="loader-spinner"></div>
+  </div>
+</div>
+
+<div class="app-wrapper">
+  <!-- Sidebar -->
+  <aside class="app-sidebar" id="app-sidebar"></aside>
+
+  <!-- Mobile Overlay -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <!-- Main Viewport -->
+  <main class="app-main" id="app-main">
+    <!-- Top Navigation Header -->
+    <header class="app-topnav" id="app-topnav"></header>
+
+    <!-- Page Content -->
+    <div class="app-content animate-fadeIn">
+
+      <!-- Page Header with Top Right Quick Actions -->
+      <div class="page-header mb-6">
+        <div class="page-header-left">
+          <nav class="breadcrumb-custom" aria-label="Breadcrumb">
+            <a href="dashboard.html">Dashboard</a>
+            <span class="sep">/</span>
+            <span>Budget Management</span>
+          </nav>
+          <h1 class="page-title">
+            <i class="fas fa-wallet" style="color:var(--brand-primary);margin-right:10px;"></i>Budget Management
+          </h1>
+          <p class="page-subtitle">
+            Manage approved apprentice capacity for each section across Staff and Workmen categories.
+          </p>
+        </div>
+
+        <!-- Quick Actions Toolbar -->
+        <div class="page-header-actions" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div id="superhr-quick-actions" style="display:flex;gap:8px;">
+            <button class="btn-primary-custom" onclick="BudgetPage.openAddBudgetModal()">
+              <i class="fas fa-plus"></i> Add Budget
+            </button>
+            <button class="btn-secondary-custom" onclick="BudgetPage.openImportModal()">
+              <i class="fas fa-file-import"></i> Import
+            </button>
+          </div>
+          <button class="btn-secondary-custom" onclick="BudgetPage.switchTab('history')">
+            <i class="fas fa-history"></i> History
+          </button>
+          <div class="budget-export-wrap" id="dash-export-wrap">
+            <button class="btn-secondary-custom" id="dash-export-btn" onclick="BudgetPage.toggleExportMenu('dash')">
+              <i class="fas fa-download"></i> Export <i class="fas fa-chevron-down" style="font-size:10px;margin-left:4px;"></i>
+            </button>
+            <div class="budget-export-menu" id="dash-export-menu">
+              <button class="budget-export-item" onclick="BudgetPage.exportCSV('dashboard')"><i class="fas fa-file-csv"></i> CSV</button>
+              <button class="budget-export-item" onclick="BudgetPage.exportExcel('dashboard')"><i class="fas fa-file-excel"></i> Excel (.xlsx)</button>
+              <button class="budget-export-item" onclick="BudgetPage.exportPDF('dashboard')"><i class="fas fa-file-pdf"></i> PDF (Print)</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Navigation -->
+      <div class="budget-tabs" role="tablist">
+        <button class="budget-tab-btn active" id="tab-btn-dashboard" role="tab" aria-selected="true" aria-controls="tab-dashboard" onclick="BudgetPage.switchTab('dashboard')">
+          <i class="fas fa-chart-pie"></i> Budget Dashboard
+        </button>
+        <button class="budget-tab-btn" id="tab-btn-config" role="tab" aria-selected="false" aria-controls="tab-config" onclick="BudgetPage.switchTab('config')">
+          <i class="fas fa-sliders-h"></i> Budget Master
+        </button>
+        <button class="budget-tab-btn" id="tab-btn-history" role="tab" aria-selected="false" aria-controls="tab-history" onclick="BudgetPage.switchTab('history')">
+          <i class="fas fa-history"></i> Audit Trail
+        </button>
+      </div>
+
+      <!-- ===== TAB 1: BUDGET DASHBOARD ===== -->
+      <div class="budget-tab-panel active" id="tab-dashboard" role="tabpanel">
+
+        <!-- V3: Simplified Location + Department filter bar -->
+        <div class="budget-toolbar mb-5" style="background:var(--surface-card);padding:16px 20px;border-radius:var(--radius-lg);border:1px solid var(--border-default);box-shadow:var(--shadow-sm);">
+          <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;width:100%;">
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <label class="form-label" style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin:0;">Location</label>
+              <select id="dash-filter-location" class="form-control-custom form-select-custom" style="min-width:180px;" onchange="BudgetPage.onFilterChange()">
+                <option value="">All Locations</option>
+              </select>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <label class="form-label" style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin:0;">Department</label>
+              <select id="dash-filter-dept" class="form-control-custom form-select-custom" style="min-width:200px;" onchange="BudgetPage.onFilterChange()">
+                <option value="">All Departments</option>
+              </select>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:6px;flex:1;min-width:220px;">
+              <label class="form-label" style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin:0;">Search Section</label>
+              <input id="dash-search-input" type="text" class="form-control-custom" placeholder="Search section..." oninput="BudgetPage.onFilterChange()">
+            </div>
+
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button class="btn-secondary-custom" onclick="BudgetPage.clearDashboardFilters()" title="Reset Filters">
+                <i class="fas fa-undo"></i> Reset
+              </button>
+              <button class="btn-secondary-custom" onclick="BudgetPage.loadDashboard()" title="Refresh Data">
+                <i class="fas fa-sync-alt"></i> Refresh
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- V3: 5 Summary Cards — Total Budget, Current Active, Remaining, Completed, Utilization -->
+        <div class="budget-summary-grid mb-4" id="budget-summary-cards">
+          <!-- Card 1: TOTAL BUDGET -->
+          <div class="budget-summary-card card-blue">
+            <div class="budget-card-icon blue"><i class="fas fa-users-cog"></i></div>
+            <div class="budget-card-label">TOTAL BUDGET</div>
+            <div class="budget-card-value" id="card-val-total-budget">—</div>
+            <div class="budget-card-sub">Approved Capacity</div>
+          </div>
+
+          <!-- Card 2: CURRENT ACTIVE -->
+          <div class="budget-summary-card card-teal">
+            <div class="budget-card-icon teal"><i class="fas fa-user-check"></i></div>
+            <div class="budget-card-label">CURRENT ACTIVE</div>
+            <div class="budget-card-value" id="card-val-current">—</div>
+            <div class="budget-card-sub">Positions Occupied</div>
+          </div>
+
+          <!-- Card 3: REMAINING (dynamically green or red) -->
+          <div class="budget-summary-card card-green" id="card-vacancies-wrap">
+            <div class="budget-card-icon green" id="card-icon-vacancies"><i class="fas fa-user-plus"></i></div>
+            <div class="budget-card-label">REMAINING</div>
+            <div class="budget-card-value" id="card-val-vacancies">—</div>
+            <div class="budget-card-sub" id="card-sub-vacancies">Positions Available</div>
+          </div>
+
+          <!-- Card 4: COMPLETED -->
+          <div class="budget-summary-card card-purple">
+            <div class="budget-card-icon purple"><i class="fas fa-user-graduate"></i></div>
+            <div class="budget-card-label">COMPLETED</div>
+            <div class="budget-card-value" id="card-val-completed">—</div>
+            <div class="budget-card-sub">Apprentices Graduated</div>
+          </div>
+
+          <!-- Card 5: UTILIZATION -->
+          <div class="budget-summary-card card-amber">
+            <div class="budget-card-icon amber"><i class="fas fa-chart-pie"></i></div>
+            <div class="budget-card-label">UTILIZATION</div>
+            <div class="budget-card-value" id="card-val-utilization">—</div>
+            <div class="util-bar-wrap" style="margin-top:6px;"><div class="util-bar-fill green" id="card-util-bar" style="width:0%;"></div></div>
+          </div>
+        </div>
+
+
+        <!-- V3: Staff / Workmen Category Breakdown Ribbon -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+          <!-- Staff Breakdown Card -->
+          <div style="background:var(--surface-card);border:1px solid var(--border-default);border-left:4px solid var(--brand-primary);border-radius:var(--radius-lg);padding:16px 20px;box-shadow:var(--shadow-sm);display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <div style="font-size:12px;font-weight:700;color:var(--brand-primary);text-transform:uppercase;letter-spacing:0.06em;display:flex;align-items:center;gap:6px;">
+                <i class="fas fa-user-tie"></i> Staff Category
+              </div>
+              <div style="display:flex;gap:20px;margin-top:8px;">
+                <div><span style="font-size:11px;color:var(--text-muted);font-weight:600;">Budget:</span> <strong id="break-staff-budget" style="font-size:15px;color:var(--text-primary);">—</strong></div>
+                <div><span style="font-size:11px;color:var(--text-muted);font-weight:600;">Active:</span> <strong id="break-staff-actual" style="font-size:15px;color:var(--text-primary);">—</strong></div>
+                <div><span style="font-size:11px;color:var(--text-muted);font-weight:600;">Available:</span> <strong id="break-staff-avail" style="font-size:15px;color:var(--status-success);">—</strong></div>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <span style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Utilization</span>
+              <div style="font-size:24px;font-weight:800;color:var(--brand-primary);line-height:1;" id="break-staff-util">—</div>
+            </div>
+          </div>
+
+          <!-- Workmen Breakdown Card -->
+          <div style="background:var(--surface-card);border:1px solid var(--border-default);border-left:4px solid #0d9488;border-radius:var(--radius-lg);padding:16px 20px;box-shadow:var(--shadow-sm);display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <div style="font-size:12px;font-weight:700;color:#0d9488;text-transform:uppercase;letter-spacing:0.06em;display:flex;align-items:center;gap:6px;">
+                <i class="fas fa-hard-hat"></i> Workmen Category
+              </div>
+              <div style="display:flex;gap:20px;margin-top:8px;">
+                <div><span style="font-size:11px;color:var(--text-muted);font-weight:600;">Budget:</span> <strong id="break-workmen-budget" style="font-size:15px;color:var(--text-primary);">—</strong></div>
+                <div><span style="font-size:11px;color:var(--text-muted);font-weight:600;">Active:</span> <strong id="break-workmen-actual" style="font-size:15px;color:var(--text-primary);">—</strong></div>
+                <div><span style="font-size:11px;color:var(--text-muted);font-weight:600;">Available:</span> <strong id="break-workmen-avail" style="font-size:15px;color:var(--status-success);">—</strong></div>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <span style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Utilization</span>
+              <div style="font-size:24px;font-weight:800;color:#0d9488;line-height:1;" id="break-workmen-util">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- V3: Location Overview Panel (shown when All Locations selected) -->
+        <div id="budget-location-overview" style="display:none;margin-bottom:20px;">
+          <div style="font-size:12px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">
+            <i class="fas fa-map-marker-alt" style="color:#0078d4;margin-right:6px;"></i>Location Capacity Overview
+          </div>
+          <div class="budget-location-overview-grid" id="budget-location-overview-grid"></div>
+        </div>
+
+
+        <!-- V3: Section Budget Table — added Completed column -->
+        <div class="budget-table-wrap" id="budget-dashboard-table-wrap">
+          <table class="budget-table" id="budget-dashboard-table">
+            <thead>
+              <tr style="background:var(--surface-secondary);">
+                <th rowspan="2" style="vertical-align:middle;">Section</th>
+                <th colspan="3" style="text-align:center;border-bottom:1px solid var(--border-color);">Staff</th>
+                <th colspan="3" style="text-align:center;border-bottom:1px solid var(--border-color);">Workmen</th>
+                <th colspan="3" style="text-align:center;border-bottom:1px solid var(--border-color);">Total</th>
+                <th rowspan="2" style="vertical-align:middle;text-align:center;">Completed</th>
+                <th rowspan="2" style="vertical-align:middle;">Status</th>
+                <th rowspan="2" style="vertical-align:middle;text-align:right;">Operations</th>
+              </tr>
+              <tr style="background:var(--surface-secondary);">
+                <th style="text-align:center;">Budget</th>
+                <th style="text-align:center;">Active</th>
+                <th style="text-align:center;">Avail</th>
+                <th style="text-align:center;">Budget</th>
+                <th style="text-align:center;">Active</th>
+                <th style="text-align:center;">Avail</th>
+                <th style="text-align:center;">Budget</th>
+                <th style="text-align:center;">Active</th>
+                <th style="text-align:center;">Avail</th>
+              </tr>
+            </thead>
+            <tbody id="budget-dashboard-tbody">
+              <tr><td colspan="13" style="text-align:center;padding:32px;color:var(--text-secondary);">
+                <i class="fas fa-spinner fa-spin" style="margin-right:8px;"></i>Loading section budgets...
+              </td></tr>
+            </tbody>
+            <tfoot id="budget-dashboard-tfoot" style="background:var(--surface-secondary);font-weight:700;"></tfoot>
+          </table>
+        </div>
+
+        <!-- Charts -->
+        <div class="budget-charts-grid" id="budget-charts-grid" style="margin-top:24px;">
+          <div class="budget-chart-card">
+            <div class="budget-chart-title"><i class="fas fa-chart-bar"></i> Budget vs Actual by Section</div>
+            <div class="budget-chart-container"><canvas id="chart-budget-vs-actual"></canvas></div>
+          </div>
+          <div class="budget-chart-card">
+            <div class="budget-chart-title"><i class="fas fa-chart-pie"></i> Staff vs Workmen Category Share</div>
+            <div class="budget-chart-container"><canvas id="chart-dept-utilization"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== TAB 2: BUDGET MASTER ===== -->
+      <div class="budget-tab-panel" id="tab-config" role="tabpanel">
+        <div class="budget-readonly-banner" id="config-readonly-banner" style="display:none;">
+          <i class="fas fa-lock"></i>
+          <span>You have <strong>view-only</strong> access to Budget Master. Contact Super HR to update budgets.</span>
+        </div>
+
+        <div class="budget-toolbar mb-4" style="background:var(--surface-card);padding:14px 18px;border-radius:var(--radius-lg);border:1px solid var(--border-default);box-shadow:var(--shadow-sm);">
+          <div class="budget-toolbar-left" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;flex:1;">
+            <input id="config-search" type="text" class="form-control-custom" placeholder="Search section, department..." style="max-width:240px;" oninput="BudgetPage.filterConfigTable()">
+            <select id="config-filter-location" class="form-control-custom form-select-custom" style="max-width:170px;" onchange="BudgetPage.filterConfigTable()">
+              <option value="">All Locations</option>
+            </select>
+            <select id="config-filter-status" class="form-control-custom form-select-custom" style="max-width:140px;" onchange="BudgetPage.filterConfigTable()">
+              <option value="">All Statuses</option>
+              <option value="ACTIVE">ACTIVE</option>
+              <option value="INACTIVE">INACTIVE</option>
+            </select>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-secondary);cursor:pointer;font-weight:600;">
+              <input type="checkbox" id="config-show-inactive" onchange="BudgetPage.loadConfiguration()"> Show Inactive
+            </label>
+          </div>
+          <div class="budget-toolbar-right" id="config-superhr-actions" style="display:flex;gap:8px;">
+            <button class="btn-primary-custom" onclick="BudgetPage.openAddBudgetModal()">
+              <i class="fas fa-plus"></i> Add Budget
+            </button>
+            <button class="btn-secondary-custom" onclick="BudgetPage.openImportModal()">
+              <i class="fas fa-file-import"></i> Import Excel
+            </button>
+          </div>
+        </div>
+
+        <div class="budget-table-wrap">
+          <table class="budget-table" id="budget-config-table">
+            <thead>
+              <tr>
+                <th>Budget ID</th>
+                <th>Location</th>
+                <th>Plant</th>
+                <th>Department</th>
+                <th>Section</th>
+                <th>Staff Budget</th>
+                <th>Workmen Budget</th>
+                <th>Total Budget</th>
+                <th>Period</th>
+                <th>Status</th>
+                <th id="th-config-actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="budget-config-tbody">
+              <tr><td colspan="11" style="text-align:center;padding:32px;color:var(--text-secondary);">
+                <i class="fas fa-spinner fa-spin" style="margin-right:8px;"></i>Loading Master Configuration...
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ===== TAB 3: AUDIT TRAIL ===== -->
+      <div class="budget-tab-panel" id="tab-history" role="tabpanel">
+        <div class="budget-toolbar mb-4" style="background:var(--surface-card);padding:14px 18px;border-radius:var(--radius-lg);border:1px solid var(--border-default);box-shadow:var(--shadow-sm);">
+          <div class="budget-toolbar-left" style="flex:1;">
+            <input id="history-search" type="text" class="form-control-custom" placeholder="Search audit logs..." style="max-width:300px;" oninput="BudgetPage.filterHistory(this.value)">
+          </div>
+          <div class="budget-toolbar-right">
+            <button class="btn-secondary-custom" onclick="BudgetPage.loadHistory()">
+              <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+          </div>
+        </div>
+
+        <div class="budget-table-wrap">
+          <table class="budget-history-table" id="budget-history-table">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>User</th>
+                <th>Action</th>
+                <th>Location</th>
+                <th>Section</th>
+                <th>Old Staff</th>
+                <th>New Staff</th>
+                <th>Old Workmen</th>
+                <th>New Workmen</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="budget-history-tbody">
+              <tr><td colspan="10" style="text-align:center;padding:32px;color:var(--text-secondary);">
+                <i class="fas fa-spinner fa-spin" style="margin-right:8px;"></i>Loading audit trail...
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /app-content -->
+  </main>
+</div><!-- /app-wrapper -->
+
+<!-- ============================================================
+     MODALS
+     ============================================================ -->
+
+<!-- 1. ADD / EDIT BUDGET MODAL -->
+<div class="budget-modal-backdrop" id="modal-budget-form">
+  <div class="budget-modal-dialog">
+    <div class="budget-modal-header">
+      <div class="budget-modal-title" id="budget-modal-title-text"><i class="fas fa-wallet" style="color:var(--brand-primary);"></i> Add Section Budget</div>
+      <button class="budget-modal-close" onclick="BudgetPage.closeModal('modal-budget-form')"><i class="fas fa-times"></i></button>
+    </div>
+    <form id="form-budget-save" onsubmit="BudgetPage.handleBudgetSave(event)">
+      <input type="hidden" id="form-budget-id" value="">
+      <div class="budget-modal-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="form-group-budget">
+            <label for="form-location" class="form-label">Location <span class="required">*</span></label>
+            <select id="form-location" class="form-control-custom form-select-custom" required></select>
+          </div>
+          <div class="form-group-budget">
+            <label for="form-plant" class="form-label">Plant <span class="required">*</span></label>
+            <input type="text" id="form-plant" class="form-control-custom" value="145 TPD" required>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="form-group-budget">
+            <label for="form-dept" class="form-label">Department <span class="required">*</span></label>
+            <input type="text" id="form-dept" class="form-control-custom" placeholder="e.g. Quality Control" required>
+          </div>
+          <div class="form-group-budget">
+            <label for="form-section" class="form-label">Section <span class="required">*</span></label>
+            <input type="text" id="form-section" class="form-control-custom" placeholder="e.g. QC C&P" required>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+          <div class="form-group-budget">
+            <label for="form-staff-budget" class="form-label">Staff Budget</label>
+            <input type="number" id="form-staff-budget" class="form-control-custom" min="0" value="0" required oninput="BudgetPage.recalcModalTotal()">
+          </div>
+          <div class="form-group-budget">
+            <label for="form-workmen-budget" class="form-label">Workmen Budget</label>
+            <input type="number" id="form-workmen-budget" class="form-control-custom" min="0" value="0" required oninput="BudgetPage.recalcModalTotal()">
+          </div>
+          <div class="form-group-budget">
+            <label for="form-total-budget" class="form-label">Total Budget (Auto)</label>
+            <input type="number" id="form-total-budget" class="form-control-custom" value="0" readonly style="background:var(--surface-card-alt);font-weight:700;">
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="form-group-budget">
+            <label for="form-date-from" class="form-label">Date From</label>
+            <input type="date" id="form-date-from" class="form-control-custom" value="2026-01-01">
+          </div>
+          <div class="form-group-budget">
+            <label for="form-date-to" class="form-label">Date To</label>
+            <input type="date" id="form-date-to" class="form-control-custom" value="2026-12-31">
+          </div>
+        </div>
+
+        <div class="form-group-budget">
+          <label for="form-status" class="form-label">Status</label>
+          <select id="form-status" class="form-control-custom form-select-custom">
+            <option value="ACTIVE">ACTIVE</option>
+            <option value="INACTIVE">INACTIVE</option>
+          </select>
+        </div>
+      </div>
+      <div class="budget-modal-footer">
+        <button type="button" class="btn-secondary-custom" onclick="BudgetPage.closeModal('modal-budget-form')">Cancel</button>
+        <button type="submit" class="btn-primary-custom" id="btn-save-budget-submit"><i class="fas fa-save"></i> Save Budget</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 2. IMPORT EXCEL MODAL -->
+<div class="budget-modal-backdrop" id="modal-import">
+  <div class="budget-modal-dialog" style="max-width:640px;">
+    <div class="budget-modal-header">
+      <div class="budget-modal-title"><i class="fas fa-file-excel" style="color:var(--status-success);"></i> Bulk Import Budget Master</div>
+      <button class="budget-modal-close" onclick="BudgetPage.closeModal('modal-import')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="budget-modal-body">
+      <p style="font-size:12.5px;color:var(--text-secondary);margin:0 0 10px;">
+        Upload an Excel file with columns: <strong>Location</strong>, <strong>Plant</strong>, <strong>Department</strong>, <strong>Section</strong>, <strong>Staff Budget</strong>, <strong>Workmen Budget</strong>.
+      </p>
+
+      <div class="import-dropzone" id="import-dropzone" onclick="document.getElementById('import-file-input').click()">
+        <i class="fas fa-cloud-upload-alt import-dropzone-icon"></i>
+        <div style="font-weight:600;font-size:13.5px;color:var(--text-primary);" id="dropzone-text">Click or drag Excel file (.xlsx / .csv) here</div>
+        <input type="file" id="import-file-input" accept=".xlsx,.xls,.csv" style="display:none;" onchange="BudgetPage.handleImportFileSelect(event)">
+      </div>
+
+      <div id="import-preview-wrap" style="display:none;margin-top:14px;max-height:200px;overflow-y:auto;border:1px solid var(--border-default);border-radius:8px;">
+        <table class="budget-table" style="font-size:12px;">
+          <thead>
+            <tr><th>Section</th><th>Staff</th><th>Workmen</th></tr>
+          </thead>
+          <tbody id="import-preview-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="budget-modal-footer">
+      <button type="button" class="btn-secondary-custom" onclick="BudgetPage.closeModal('modal-import')">Cancel</button>
+      <button type="button" class="btn-primary-custom" id="btn-import-submit" disabled onclick="BudgetPage.executeImport()"><i class="fas fa-upload"></i> Import Budgets</button>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="../assets/js/app.js?v=3.0"></script>
+<script src="../assets/js/theme.js?v=3.0"></script>
+<script src="../assets/js/sidebar.js?v=3.0"></script>
+<script src="../assets/js/toast.js?v=3.0"></script>
+
+<script>
+/* ============================================================
+   BudgetPage Controller -- Budget Management V3
+   ============================================================ */
+const BudgetPage = (function() {
+  let _dashboardData = null;
+  let _configData    = null;
+  let _historyData   = null;
+  let _importRows    = [];
+  let _charts        = {};
+
+  const isSuperHR = function() { return AppDB.getRole() === 'Super HR'; };
+
+  function switchTab(tab) {
+    document.querySelectorAll('.budget-tab-btn').forEach(function(b) {
+      b.classList.remove('active'); b.setAttribute('aria-selected', 'false');
+    });
+    document.querySelectorAll('.budget-tab-panel').forEach(function(p) {
+      p.classList.remove('active');
+    });
+
+    var btn   = document.getElementById('tab-btn-' + tab);
+    var panel = document.getElementById('tab-' + tab);
+    if (btn)   { btn.classList.add('active'); btn.setAttribute('aria-selected', 'true'); }
+    if (panel) { panel.classList.add('active'); }
+
+    if (tab === 'dashboard' && !_dashboardData) loadDashboard();
+    if (tab === 'config'    && !_configData)    loadConfiguration();
+    if (tab === 'history'   && !_historyData)   loadHistory();
+  }
+
+  async function apiFetch(path, opts, retryAttempt) {
+    retryAttempt = retryAttempt || 0;
+    var baseUrl = AppDB.getBackendUrl();
+    var url = baseUrl + path;
+    try {
+      var res = await fetch(url, Object.assign({ headers: AppDB.apiHeaders() }, opts || {}));
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      var data = await res.json();
+      if (!data.success) throw new Error(data.error || 'API error');
+      return data;
+    } catch(err) {
+      if (retryAttempt < 2) {
+        await new Promise(function(r) { setTimeout(r, 400); });
+        return apiFetch(path, opts, retryAttempt + 1);
+      }
+      var altBase = AppDB.getFallbackBackendUrl();
+      if (altBase && altBase !== baseUrl) {
+        try {
+          var altUrl = altBase + path;
+          var altRes = await fetch(altUrl, Object.assign({ headers: AppDB.apiHeaders() }, opts || {}));
+          if (altRes.ok) {
+            var altData = await altRes.json();
+            if (altData.success) return altData;
+          }
+        } catch(altErr) { /* ignore fallback error */ }
+      }
+      throw err;
+    }
+  }
+
+  // V3: Load dropdowns — Location from /api/locations, Department from /api/departments
+  async function loadDropdowns() {
+    try {
+      var results = await Promise.all([
+        apiFetch('/api/locations'),
+        apiFetch('/api/departments')
+      ]);
+      var locs  = (results[0].locations  || []);
+      var depts = (results[1].departments || []);
+
+      populateSelect('dash-filter-location', locs, 'All Locations');
+      populateSelect('config-filter-location', locs, 'All Locations');
+      populateSelect('form-location', locs, 'Select Location');
+
+      // V3: Departments from live /api/departments
+      populateSelect('dash-filter-dept', depts, 'All Departments');
+
+      if (!isSuperHR()) {
+        var userBranch = AppDB.getBranch();
+        if (userBranch && userBranch !== 'All Locations') {
+          var el = document.getElementById('dash-filter-location');
+          if (el) { el.value = userBranch; el.disabled = true; }
+        }
+      }
+      var superActions = document.getElementById('superhr-quick-actions');
+      if (superActions) superActions.style.display = isSuperHR() ? 'flex' : 'none';
+    } catch(err) {
+      console.warn('Dropdown error:', err);
+    }
+  }
+
+  function populateSelect(id, items, placeholder) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var html = placeholder ? '<option value="">' + placeholder + '</option>' : '';
+    items.forEach(function(item) {
+      var val = typeof item === 'string' ? item : item.name || item.department || item;
+      html += '<option value="' + esc(val) + '">' + esc(val) + '</option>';
+    });
+    el.innerHTML = html;
+  }
+
+  async function loadDashboard() {
+    var tbody = document.getElementById('budget-dashboard-tbody');
+    tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:32px;color:var(--text-secondary);"><i class="fas fa-spinner fa-spin" style="margin-right:8px;"></i>Loading budget data...</td></tr>';
+
+    try {
+      var loc   = document.getElementById('dash-filter-location') ? document.getElementById('dash-filter-location').value : '';
+      var dept  = document.getElementById('dash-filter-dept') ? document.getElementById('dash-filter-dept').value : '';
+      var srch  = document.getElementById('dash-search-input') ? document.getElementById('dash-search-input').value : '';
+
+      // V3: Only Location, Department, Search sent to API (Plant/Section removed from dashboard filter)
+      var query = '?location=' + encodeURIComponent(loc) + '&department=' + encodeURIComponent(dept) + '&search=' + encodeURIComponent(srch);
+      var data  = await apiFetch('/api/budget' + query);
+      _dashboardData = data;
+
+      renderSummaryCards(data.summary);
+      renderLocationOverview(data.locationSummary || [], loc);
+      renderDashboardTable(data.sections || []);
+      renderCharts(data.sections || []);
+    } catch(err) {
+      tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:32px;color:#e11d48;"><i class="fas fa-exclamation-triangle" style="margin-right:8px;"></i>' + err.message + '</td></tr>';
+      if (typeof Toast !== 'undefined') Toast.error('Dashboard Error', err.message, 5000);
+    }
+  }
+
+  function onFilterChange() {
+    loadDashboard();
+  }
+
+  function clearDashboardFilters() {
+    if (document.getElementById('dash-filter-location') && isSuperHR()) document.getElementById('dash-filter-location').value = '';
+    if (document.getElementById('dash-filter-dept')) document.getElementById('dash-filter-dept').value = '';
+    if (document.getElementById('dash-search-input')) document.getElementById('dash-search-input').value = '';
+    loadDashboard();
+  }
+
+  // V3: Updated summary cards — 5 cards with Completed and dynamic Remaining
+  function renderSummaryCards(s) {
+    if (!s) return;
+    document.getElementById('card-val-total-budget').textContent = s.totalBudget;
+    document.getElementById('card-val-current').textContent      = s.currentActual;
+
+    // V3: Remaining — green if positive, red if negative (Over Budget)
+    var remaining    = s.available;
+    var vacCard      = document.getElementById('card-vacancies-wrap');
+    var vacIcon      = document.getElementById('card-icon-vacancies');
+    var vacVal       = document.getElementById('card-val-vacancies');
+    var vacSub       = document.getElementById('card-sub-vacancies');
+    if (remaining < 0) {
+      vacCard.className = 'budget-summary-card card-rose';
+      vacIcon.className = 'budget-card-icon rose';
+      vacIcon.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+      vacVal.textContent = Math.abs(remaining);
+      vacSub.textContent = 'Positions Over Budget';
+    } else if (remaining === 0) {
+      vacCard.className = 'budget-summary-card card-amber';
+      vacIcon.className = 'budget-card-icon amber';
+      vacIcon.innerHTML = '<i class="fas fa-user-slash"></i>';
+      vacVal.textContent = 0;
+      vacSub.textContent = 'Full Capacity';
+    } else {
+      vacCard.className = 'budget-summary-card card-green';
+      vacIcon.className = 'budget-card-icon green';
+      vacIcon.innerHTML = '<i class="fas fa-user-plus"></i>';
+      vacVal.textContent = remaining;
+      vacSub.textContent = 'Positions Available';
+    }
+
+    // V3: Completed card
+    var completedEl = document.getElementById('card-val-completed');
+    if (completedEl) completedEl.textContent = s.totalCompleted !== undefined ? s.totalCompleted : '—';
+
+    document.getElementById('card-val-utilization').textContent = s.utilizationPct + '%';
+    var utilBar = document.getElementById('card-util-bar');
+    if (utilBar) {
+      utilBar.style.width = Math.min(s.utilizationPct, 100) + '%';
+      utilBar.className   = 'util-bar-fill ' + (s.utilizationPct >= 100 ? 'red' : s.utilizationPct >= 85 ? 'yellow' : 'green');
+    }
+
+    // Ribbon breakdown
+    document.getElementById('break-staff-budget').textContent = s.staffBudget;
+    document.getElementById('break-staff-actual').textContent = s.staffActual;
+    document.getElementById('break-staff-avail').textContent  = s.staffAvailable;
+    var staffPct = s.staffBudget > 0 ? (Math.round((s.staffActual / s.staffBudget) * 1000) / 10) : 0;
+    document.getElementById('break-staff-util').textContent   = staffPct + '%';
+
+    document.getElementById('break-workmen-budget').textContent = s.workmenBudget;
+    document.getElementById('break-workmen-actual').textContent = s.workmenActual;
+    document.getElementById('break-workmen-avail').textContent  = s.workmenAvailable;
+    var wrkPct = s.workmenBudget > 0 ? (Math.round((s.workmenActual / s.workmenBudget) * 1000) / 10) : 0;
+    document.getElementById('break-workmen-util').textContent   = wrkPct + '%';
+  }
+
+  // V3: Render per-location overview cards (shown when All Locations selected)
+  function renderLocationOverview(locationSummary, selectedLocation) {
+    var panel = document.getElementById('budget-location-overview');
+    var grid  = document.getElementById('budget-location-overview-grid');
+    if (!panel || !grid) return;
+
+    // Show overview only when no specific location is selected
+    if (selectedLocation || !locationSummary || locationSummary.length === 0) {
+      panel.style.display = 'none';
+      return;
+    }
+
+    panel.style.display = 'block';
+    grid.innerHTML = locationSummary.map(function(ls) {
+      var statusDot   = ls.status === 'OVER BUDGET' ? '🔴' : ls.status === 'FULL' ? '🟡' : '🟢';
+      var remainClass = ls.available < 0 ? 'color:#e11d48;font-weight:700;' : ls.available === 0 ? 'color:#d97706;font-weight:700;' : 'color:#059669;font-weight:700;';
+      var remainLabel = ls.available < 0 ? Math.abs(ls.available) + ' Over' : ls.available + ' Free';
+      var utilBarColor = ls.utilizationPct >= 100 ? '#e11d48' : ls.utilizationPct >= 85 ? '#d97706' : '#059669';
+
+      return '<div class="budget-location-card">' +
+        '<div class="budget-location-card-name"><i class="fas fa-building" style="color:#0078d4;margin-right:6px;"></i>' + esc(ls.location) + '</div>' +
+        '<div class="budget-location-card-stats">' +
+          '<div class="budget-location-stat"><span>Budget</span><strong>' + ls.totalBudget + '</strong></div>' +
+          '<div class="budget-location-stat"><span>Active</span><strong>' + ls.currentActual + '</strong></div>' +
+          '<div class="budget-location-stat"><span>Remaining</span><strong style="' + remainClass + '">' + remainLabel + '</strong></div>' +
+          '<div class="budget-location-stat"><span>Completed</span><strong>' + ls.completed + '</strong></div>' +
+        '</div>' +
+        '<div class="budget-location-card-util">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+            '<span style="font-size:10px;color:var(--text-secondary);">' + statusDot + ' ' + esc(ls.status) + '</span>' +
+            '<span style="font-size:12px;font-weight:700;color:' + utilBarColor + ';">' + ls.utilizationPct + '%</span>' +
+          '</div>' +
+          '<div class="util-bar-wrap"><div class="util-bar-fill" style="width:' + Math.min(ls.utilizationPct, 100) + '%;background:' + utilBarColor + ';"></div></div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  // V3: Dashboard table with Completed column
+  function renderDashboardTable(sections) {
+    var tbody = document.getElementById('budget-dashboard-tbody');
+    var tfoot = document.getElementById('budget-dashboard-tfoot');
+
+    if (!sections || sections.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:32px;color:var(--text-secondary);">No budget data available for the selected filters.</td></tr>';
+      tfoot.innerHTML = '';
+      return;
+    }
+
+    var rowsHtml = sections.map(function(s) {
+      var staffAvailCls = s.staffAvailable < 0 ? 'num-negative' : s.staffAvailable === 0 ? 'num-zero' : 'num-positive';
+      var wrkAvailCls   = s.workmenAvailable < 0 ? 'num-negative' : s.workmenAvailable === 0 ? 'num-zero' : 'num-positive';
+      var totAvailCls   = s.totalAvailable < 0 ? 'num-negative' : s.totalAvailable === 0 ? 'num-zero' : 'num-positive';
+
+      var statusDot = s.status === 'OVER BUDGET' ? '🔴' : s.status === 'FULL' ? '🟡' : '🟢';
+
+      var categoryWarnHtml = s.categoryWarning
+        ? '<div style="font-size:11px;color:#e11d48;font-weight:700;margin-top:2px;">' + esc(s.categoryWarning) + '</div>'
+        : '';
+
+      return '<tr>' +
+        '<td><strong>' + esc(s.section) + '</strong><div style="font-size:11px;color:var(--text-secondary);">' + esc(s.department) + '</div></td>' +
+        '<td style="text-align:center;">' + s.staffBudget + '</td>' +
+        '<td style="text-align:center;">' + s.staffActual + '</td>' +
+        '<td style="text-align:center;" class="' + staffAvailCls + '"><strong>' + s.staffAvailable + '</strong></td>' +
+        '<td style="text-align:center;">' + s.workmenBudget + '</td>' +
+        '<td style="text-align:center;">' + s.workmenActual + '</td>' +
+        '<td style="text-align:center;" class="' + wrkAvailCls + '"><strong>' + s.workmenAvailable + '</strong></td>' +
+        '<td style="text-align:center;"><strong>' + s.totalBudget + '</strong></td>' +
+        '<td style="text-align:center;"><strong>' + s.totalActual + '</strong></td>' +
+        '<td style="text-align:center;" class="' + totAvailCls + '"><strong>' + s.totalAvailable + '</strong></td>' +
+        // V3: Completed column
+        '<td style="text-align:center;color:#7c3aed;font-weight:600;">' + (s.completedCount || 0) + '</td>' +
+        '<td>' +
+          '<span class="budget-status-badge ' + esc(s.statusClass) + '">' + statusDot + ' ' + esc(s.status) + '</span>' +
+          '<div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">' + esc(s.subText) + '</div>' +
+          categoryWarnHtml +
+        '</td>' +
+        '<td style="text-align:right;">' +
+          (isSuperHR()
+            ? '<button class="btn btn-secondary btn-sm" onclick="BudgetPage.openEditBudgetModal(\'' + esc(s.budgetId) + '\')"><i class="fas fa-edit"></i> Edit</button>'
+            : '<span style="font-size:11px;color:var(--text-secondary);">View Only</span>'
+          ) +
+        '</td>' +
+        '</tr>';
+    }).join('');
+
+    tbody.innerHTML = rowsHtml;
+
+    // Footer totals
+    var totSB = 0, totSA = 0, totWB = 0, totWA = 0, totTB = 0, totTA = 0, totCmp = 0;
+    sections.forEach(function(s) {
+      totSB += s.staffBudget; totSA += s.staffActual;
+      totWB += s.workmenBudget; totWA += s.workmenActual;
+      totTB += s.totalBudget; totTA += s.totalActual;
+      totCmp += (s.completedCount || 0);
+    });
+    var totSAvail = totSB - totSA;
+    var totWAvail = totWB - totWA;
+    var totTAvail = totTB - totTA;
+
+    tfoot.innerHTML = '<tr>' +
+      '<td>TOTAL</td>' +
+      '<td style="text-align:center;">' + totSB + '</td>' +
+      '<td style="text-align:center;">' + totSA + '</td>' +
+      '<td style="text-align:center;color:#059669;">' + totSAvail + '</td>' +
+      '<td style="text-align:center;">' + totWB + '</td>' +
+      '<td style="text-align:center;">' + totWA + '</td>' +
+      '<td style="text-align:center;color:#059669;">' + totWAvail + '</td>' +
+      '<td style="text-align:center;">' + totTB + '</td>' +
+      '<td style="text-align:center;">' + totTA + '</td>' +
+      '<td style="text-align:center;' + (totTAvail < 0 ? 'color:#e11d48;' : 'color:#059669;') + '">' + totTAvail + '</td>' +
+      '<td style="text-align:center;color:#7c3aed;">' + totCmp + '</td>' +
+      '<td colspan="2">Utilization: ' + (totTB > 0 ? (Math.round((totTA/totTB)*1000)/10) : 0) + '%</td>' +
+      '</tr>';
+  }
+
+  function renderCharts(sections) {
+    if (!sections || !sections.length) return;
+
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    var gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
+    var tickColor = isDark ? '#94a3b8' : '#64748b';
+
+    destroyChart('chart-budget-vs-actual');
+    destroyChart('chart-dept-utilization');
+
+    var topSecs = sections.slice(0, 10);
+    _charts['chart-budget-vs-actual'] = new Chart(document.getElementById('chart-budget-vs-actual'), {
+      type: 'bar',
+      data: {
+        labels: topSecs.map(function(s) { return s.section; }),
+        datasets: [
+          { label: 'Total Budget', data: topSecs.map(function(s) { return s.totalBudget; }), backgroundColor: 'rgba(0,120,212,0.7)', borderRadius: 4 },
+          { label: 'Total Active', data: topSecs.map(function(s) { return s.totalActual; }), backgroundColor: 'rgba(5,150,105,0.7)', borderRadius: 4 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: tickColor, font: { family: 'Inter', size: 11 } } } },
+        scales: {
+          x: { grid: { color: gridColor }, ticks: { color: tickColor, font: { family: 'Inter', size: 10 } } },
+          y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { family: 'Inter', size: 10 } }, beginAtZero: true }
+        }
+      }
+    });
+
+    _charts['chart-dept-utilization'] = new Chart(document.getElementById('chart-dept-utilization'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Staff Active', 'Workmen Active', 'Available Capacity'],
+        datasets: [{
+          data: [
+            sections.reduce(function(a,b){ return a + b.staffActual; }, 0),
+            sections.reduce(function(a,b){ return a + b.workmenActual; }, 0),
+            Math.max(0, sections.reduce(function(a,b){ return a + b.totalAvailable; }, 0))
+          ],
+          backgroundColor: ['rgba(0,120,212,0.8)', 'rgba(13,148,136,0.8)', 'rgba(5,150,105,0.2)'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'right', labels: { color: tickColor, font: { family: 'Inter', size: 11 } } } }
+      }
+    });
+  }
+
+  function destroyChart(id) {
+    if (_charts[id]) { _charts[id].destroy(); delete _charts[id]; }
+  }
+
+  async function loadConfiguration() {
+    var tbody = document.getElementById('budget-config-tbody');
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:32px;color:var(--text-secondary);"><i class="fas fa-spinner fa-spin" style="margin-right:8px;"></i>Loading Master Configuration...</td></tr>';
+
+    try {
+      var showInactive = document.getElementById('config-show-inactive') ? document.getElementById('config-show-inactive').checked : false;
+      var data = await apiFetch('/api/budget/config?showInactive=' + showInactive);
+      _configData = data.config;
+      renderConfigTable(_configData);
+    } catch(err) {
+      tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:32px;color:#e11d48;"><i class="fas fa-exclamation-triangle" style="margin-right:8px;"></i>' + err.message + '</td></tr>';
+    }
+  }
+
+  function filterConfigTable() {
+    if (!_configData) return;
+    var search = (document.getElementById('config-search') ? document.getElementById('config-search').value : '').toLowerCase();
+    var locF   = (document.getElementById('config-filter-location') ? document.getElementById('config-filter-location').value : '').toLowerCase();
+    var statusF= (document.getElementById('config-filter-status') ? document.getElementById('config-filter-status').value : '').toUpperCase();
+
+    var filtered = _configData.filter(function(d) {
+      if (locF    && d.location.toLowerCase()   !== locF)    return false;
+      if (statusF && d.status.toUpperCase()      !== statusF) return false;
+      if (search) {
+        var m = d.section.toLowerCase().includes(search) ||
+                d.department.toLowerCase().includes(search) ||
+                d.location.toLowerCase().includes(search) ||
+                d.budgetId.toLowerCase().includes(search);
+        if (!m) return false;
+      }
+      return true;
+    });
+    renderConfigTable(filtered);
+  }
+
+  function renderConfigTable(config) {
+    if (!config || config.length === 0) {
+      document.getElementById('budget-config-tbody').innerHTML = '<tr><td colspan="11" style="text-align:center;padding:32px;color:var(--text-secondary);">No budget configurations found.</td></tr>';
+      return;
+    }
+    var superHR = isSuperHR();
+    var rows = config.map(function(d) {
+      var isInactive = d.status === 'INACTIVE';
+      return '<tr class="' + (isInactive ? 'row-inactive' : '') + '">' +
+        '<td><code>' + esc(d.budgetId) + '</code></td>' +
+        '<td>' + esc(d.location) + '</td>' +
+        '<td>' + esc(d.plant) + '</td>' +
+        '<td>' + esc(d.department) + '</td>' +
+        '<td><strong>' + esc(d.section) + '</strong></td>' +
+        '<td>' + d.staffBudget + '</td>' +
+        '<td>' + d.workmenBudget + '</td>' +
+        '<td><strong>' + d.totalBudget + '</strong></td>' +
+        '<td>' + esc(d.dateFrom) + ' to ' + esc(d.dateTo) + '</td>' +
+        '<td><span class="budget-status-badge ' + (isInactive ? 'status-inactive' : 'status-active') + '">' + esc(d.status) + '</span></td>' +
+        '<td>' +
+          (superHR ? '<button class="btn-icon-sm" onclick="BudgetPage.openEditBudgetModal(\'' + esc(d.budgetId) + '\')"><i class="fas fa-edit"></i></button>' : '') +
+        '</td>' +
+        '</tr>';
+    }).join('');
+    document.getElementById('budget-config-tbody').innerHTML = rows;
+  }
+
+  function openModal(id) { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  function toggleExportMenu(prefix) {
+    var menu = document.getElementById(prefix + '-export-menu');
+    if (!menu) return;
+    var isOpen = menu.classList.contains('open');
+    document.querySelectorAll('.budget-export-menu').forEach(function(m) { m.classList.remove('open'); });
+    if (!isOpen) menu.classList.add('open');
+  }
+
+  // Close export menus on outside click
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.budget-export-wrap')) {
+      document.querySelectorAll('.budget-export-menu').forEach(function(m) { m.classList.remove('open'); });
+    }
+  });
+
+  function exportCSV(context) {
+    var data = _dashboardData && _dashboardData.sections ? _dashboardData.sections : [];
+    if (!data.length) { if (typeof Toast !== 'undefined') Toast.info('No Data', 'No data to export.'); return; }
+    var headers = ['Location','Department','Section','Staff Budget','Staff Active','Staff Avail','Workmen Budget','Workmen Active','Workmen Avail','Total Budget','Total Active','Total Avail','Completed','Status'];
+    var rows = data.map(function(s) {
+      return [s.location,s.department,s.section,s.staffBudget,s.staffActual,s.staffAvailable,s.workmenBudget,s.workmenActual,s.workmenAvailable,s.totalBudget,s.totalActual,s.totalAvailable,s.completedCount||0,s.status].join(',');
+    });
+    var csv = headers.join(',') + '\n' + rows.join('\n');
+    var a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+    a.download = 'budget_dashboard_' + new Date().toISOString().split('T')[0] + '.csv';
+    a.click();
+  }
+
+  function exportExcel(context) {
+    var data = _dashboardData && _dashboardData.sections ? _dashboardData.sections : [];
+    if (!data.length) { if (typeof Toast !== 'undefined') Toast.info('No Data', 'No data to export.'); return; }
+    var ws_data = [['Location','Department','Section','Staff Budget','Staff Active','Staff Avail','Workmen Budget','Workmen Active','Workmen Avail','Total Budget','Total Active','Total Avail','Completed','Status','Utilization%']];
+    data.forEach(function(s) {
+      ws_data.push([s.location,s.department,s.section,s.staffBudget,s.staffActual,s.staffAvailable,s.workmenBudget,s.workmenActual,s.workmenAvailable,s.totalBudget,s.totalActual,s.totalAvailable,s.completedCount||0,s.status,s.utilizationPct]);
+    });
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws_data), 'Budget Dashboard');
+    XLSX.writeFile(wb, 'budget_dashboard_' + new Date().toISOString().split('T')[0] + '.xlsx');
+  }
+
+  function exportPDF(context) {
+    window.print();
+  }
+
+  function openAddBudgetModal() {
+    document.getElementById('budget-modal-title-text').innerHTML = '<i class="fas fa-wallet" style="color:#0078d4;"></i> Add Section Budget';
+    document.getElementById('form-budget-id').value = '';
+    document.getElementById('form-location').value = '';
+    document.getElementById('form-plant').value = '145 TPD';
+    document.getElementById('form-dept').value = '';
+    document.getElementById('form-section').value = '';
+    document.getElementById('form-staff-budget').value = '0';
+    document.getElementById('form-workmen-budget').value = '0';
+    document.getElementById('form-total-budget').value = '0';
+    document.getElementById('form-date-from').value = '2026-01-01';
+    document.getElementById('form-date-to').value = '2026-12-31';
+    document.getElementById('form-status').value = 'ACTIVE';
+    openModal('modal-budget-form');
+  }
+
+  function openEditBudgetModal(budgetId) {
+    var item = (_configData || []).find(function(r) { return r.budgetId === budgetId; }) ||
+               (_dashboardData && _dashboardData.sections ? _dashboardData.sections.find(function(r) { return r.budgetId === budgetId; }) : null);
+
+    if (!item) { if (typeof Toast !== 'undefined') Toast.error('Error', 'Budget item not found. Try loading Budget Master tab first.'); return; }
+
+    document.getElementById('budget-modal-title-text').innerHTML = '<i class="fas fa-edit" style="color:#0078d4;"></i> Edit Section Budget: ' + esc(budgetId);
+    document.getElementById('form-budget-id').value = item.budgetId;
+    document.getElementById('form-location').value = item.location;
+    document.getElementById('form-plant').value = item.plant || '145 TPD';
+    document.getElementById('form-dept').value = item.department;
+    document.getElementById('form-section').value = item.section;
+    document.getElementById('form-staff-budget').value = item.staffBudget;
+    document.getElementById('form-workmen-budget').value = item.workmenBudget;
+    document.getElementById('form-total-budget').value = (parseInt(item.staffBudget)||0) + (parseInt(item.workmenBudget)||0);
+    document.getElementById('form-date-from').value = item.dateFrom || '2026-01-01';
+    document.getElementById('form-date-to').value = item.dateTo || '2026-12-31';
+    document.getElementById('form-status').value = item.status || 'ACTIVE';
+    openModal('modal-budget-form');
+  }
+
+  function recalcModalTotal() {
+    var s = parseInt(document.getElementById('form-staff-budget').value) || 0;
+    var w = parseInt(document.getElementById('form-workmen-budget').value) || 0;
+    document.getElementById('form-total-budget').value = s + w;
+  }
+
+  async function handleBudgetSave(e) {
+    e.preventDefault();
+    var budgetId = document.getElementById('form-budget-id').value;
+    var payload = {
+      location:      document.getElementById('form-location').value,
+      plant:         document.getElementById('form-plant').value,
+      department:    document.getElementById('form-dept').value,
+      section:       document.getElementById('form-section').value,
+      staffBudget:   document.getElementById('form-staff-budget').value,
+      workmenBudget: document.getElementById('form-workmen-budget').value,
+      dateFrom:      document.getElementById('form-date-from').value,
+      dateTo:        document.getElementById('form-date-to').value,
+      status:        document.getElementById('form-status').value
+    };
+
+    try {
+      var path   = budgetId ? ('/api/budget/item/' + encodeURIComponent(budgetId)) : '/api/budget/item';
+      var method = budgetId ? 'PUT' : 'POST';
+      var res    = await apiFetch(path, { method: method, body: JSON.stringify(payload) });
+      if (typeof Toast !== 'undefined') Toast.success('Success', res.message);
+      closeModal('modal-budget-form');
+      _configData = null; _dashboardData = null;
+      loadDashboard();
+    } catch(err) {
+      if (typeof Toast !== 'undefined') Toast.error('Save Error', err.message, 5000);
+    }
+  }
+
+  function openImportModal() { openModal('modal-import'); }
+
+  function handleImportFileSelect(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(evt) {
+      try {
+        var data  = new Uint8Array(evt.target.result);
+        var wb    = XLSX.read(data, { type: 'array' });
+        var sheet = wb.Sheets[wb.SheetNames[0]];
+        var rows  = XLSX.utils.sheet_to_json(sheet);
+        _importRows = rows;
+        document.getElementById('dropzone-text').textContent = file.name + ' (' + rows.length + ' rows parsed)';
+        document.getElementById('btn-import-submit').disabled = false;
+      } catch(err) {
+        if (typeof Toast !== 'undefined') Toast.error('Parse Error', err.message);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  async function executeImport() {
+    if (!_importRows.length) return;
+    try {
+      var res = await apiFetch('/api/budget/import', { method: 'POST', body: JSON.stringify({ rows: _importRows }) });
+      if (typeof Toast !== 'undefined') Toast.success('Imported', res.message);
+      closeModal('modal-import');
+      _dashboardData = null; loadDashboard();
+    } catch(err) {
+      if (typeof Toast !== 'undefined') Toast.error('Import Failed', err.message);
+    }
+  }
+
+  async function loadHistory() {
+    var tbody = document.getElementById('budget-history-tbody');
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--text-secondary);"><i class="fas fa-spinner fa-spin"></i> Loading audit trail...</td></tr>';
+    try {
+      var data = await apiFetch('/api/budget/history');
+      _historyData = data.history;
+      renderHistory(_historyData);
+    } catch(err) {
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:32px;color:#e11d48;">' + err.message + '</td></tr>';
+    }
+  }
+
+  function filterHistory(searchTerm) {
+    if (!_historyData) return;
+    var term = (searchTerm || '').toLowerCase();
+    var filtered = term ? _historyData.filter(function(r) {
+      return JSON.stringify(r).toLowerCase().includes(term);
+    }) : _historyData;
+    renderHistory(filtered);
+  }
+
+  function renderHistory(logs) {
+    var tbody = document.getElementById('budget-history-tbody');
+    if (!logs || !logs.length) {
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--text-secondary);">No history logs found.</td></tr>';
+      return;
+    }
+    var rows = logs.map(function(r) {
+      return '<tr>' +
+        '<td>' + esc(r.Timestamp || r.timestamp || '') + '</td>' +
+        '<td>' + esc(r.User || r.user || '') + '</td>' +
+        '<td><span class="audit-action-badge">' + esc(r.Action || r.action || '') + '</span></td>' +
+        '<td>' + esc(r.Location || r.location || '') + '</td>' +
+        '<td>' + esc(r.Department || r.department || '') + '</td>' +
+        '<td>' + (r['Old Staff Budget'] || 0) + '</td>' +
+        '<td>' + (r['New Staff Budget'] || 0) + '</td>' +
+        '<td>' + (r['Old Workmen Budget'] || 0) + '</td>' +
+        '<td>' + (r['New Workmen Budget'] || 0) + '</td>' +
+        '<td>' + esc(r['New Status'] || '') + '</td>' +
+        '</tr>';
+    }).join('');
+    tbody.innerHTML = rows;
+  }
+
+  function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  return {
+    switchTab:             switchTab,
+    loadDashboard:         loadDashboard,
+    loadConfiguration:     loadConfiguration,
+    loadHistory:           loadHistory,
+    loadDropdowns:         loadDropdowns,
+    onFilterChange:        onFilterChange,
+    clearDashboardFilters: clearDashboardFilters,
+    filterConfigTable:     filterConfigTable,
+    filterHistory:         filterHistory,
+    toggleExportMenu:      toggleExportMenu,
+    exportCSV:             exportCSV,
+    exportExcel:           exportExcel,
+    exportPDF:             exportPDF,
+    openAddBudgetModal:    openAddBudgetModal,
+    openEditBudgetModal:   openEditBudgetModal,
+    recalcModalTotal:      recalcModalTotal,
+    handleBudgetSave:      handleBudgetSave,
+    openImportModal:       openImportModal,
+    handleImportFileSelect:handleImportFileSelect,
+    executeImport:         executeImport,
+    closeModal:            closeModal
+  };
+})();
+
+document.addEventListener('DOMContentLoaded', async function() {
+  var token = localStorage.getItem('pgp_token');
+  var role  = localStorage.getItem('pgp_role');
+  if (!token || !role) { window.location.href = '../index.html'; return; }
+
+  await AppDB.init();
+  AppShell.renderSidebar();
+  AppShell.renderTopNav();
+
+  await BudgetPage.loadDropdowns();
+
+  var loader = document.getElementById('global-page-loader');
+  if (loader) { loader.style.opacity = '0'; setTimeout(function() { loader.style.display = 'none'; }, 300); }
+
+  BudgetPage.loadDashboard();
+});
+</script>
+</body>
+</html>

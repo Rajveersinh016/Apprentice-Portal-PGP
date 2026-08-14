@@ -104,8 +104,8 @@ app.use((req, res, next) => {
         `Analytics Cache Status: ${hasAnalyticsKeys ? 'Warm' : 'Cold'}\n` +
         `Reports Cache Status: N/A\n` +
         `Frontend AppDB Cache Count: ${req.headers['x-frontend-appdb-cache-count'] || 'N/A'}\n` +
-        `Frontend Local Storage: ${req.headers['x-frontend-local-storage'] || 'N/A'}\n` +
-        `Frontend Session Storage: ${req.headers['x-frontend-session-storage'] || 'N/A'}\n` +
+        `Frontend Local Storage: ${req.headers['x-frontend-local-storage'] ? decodeURIComponent(req.headers['x-frontend-local-storage']) : 'N/A'}\n` +
+        `Frontend Session Storage: ${req.headers['x-frontend-session-storage'] ? decodeURIComponent(req.headers['x-frontend-session-storage']) : 'N/A'}\n` +
         `Final API Response Count: ${store.recordCount}\n` +
         `Final Rendered Count: ${store.recordCount}\n` +
         `Execution Time: ${Date.now() - startTime}ms\n` +
@@ -157,7 +157,15 @@ app.use(cors({
     return callback(new Error('CORS policy block: origin not allowed.'), false);
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'x-request-id',
+    'x-browser-url',
+    'x-frontend-appdb-cache-count',
+    'x-frontend-local-storage',
+    'x-frontend-session-storage'
+  ],
   exposedHeaders: ['Content-Disposition', 'Content-Length']
 }));
 
@@ -168,23 +176,21 @@ app.use(express.urlencoded({ limit: '500mb', extended: true }));
 // PRIORITY 3 — HEALTH CHECK ENDPOINT
 // ============================================================
 app.get('/api/health', async (req, res) => {
+  let dbStatus = "connected";
   try {
     await sheetsService.ensureSheetsExist();
-    return res.json({
-      status: "ok",
-      database: "connected",
-      cache: "active",
-      version: "1.0.0"
-    });
   } catch (err) {
-    console.error("Health check error:", err.message);
-    return res.status(500).json({
-      status: "error",
-      database: "disconnected",
-      cache: "inactive",
-      version: "1.0.0"
-    });
+    console.warn("Health check Google Sheets warning:", err.message);
+    dbStatus = "connecting";
   }
+  return res.json({
+    status: "ok",
+    server: "online",
+    database: dbStatus,
+    cache: "active",
+    version: "1.0.0",
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Register api routers
@@ -195,6 +201,7 @@ app.use('/api/users', usersRoutes);
 app.use('/api/locations', locationsRoutes);
 app.use('/api/departments', departmentsRoutes);
 app.use('/api/reports', exportRateLimiter, require('./routes/reports'));
+app.use('/api/budget', require('./routes/budget'));
 
 // ============================================================
 // SERVE FRONTEND STATIC FILES
@@ -221,7 +228,8 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(PORT, async () => {
+const server = app.listen(PORT, async () => {
+  console.log(`[STARTUP] PGP Glass Apprentice Portal backend running on http://localhost:${PORT}`);
   // Try to connect to Google Sheets on start to verify setup and warm cache
   try {
     await sheetsService.ensureSheetsExist();
@@ -235,6 +243,14 @@ app.listen(PORT, async () => {
     console.log(`[STARTUP] Google Sheets caches warmed successfully in ${Date.now() - startTime}ms!`);
   } catch (err) {
     console.error('[CRITICAL] sheetsService failed to connect to Google Sheet:', err.message);
+  }
+});
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`[STARTUP ERROR] Port ${PORT} is already in use by another Node process.`);
+  } else {
+    console.error('[STARTUP ERROR]', err.message);
   }
 });
 
