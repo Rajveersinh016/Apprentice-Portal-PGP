@@ -38,7 +38,6 @@ window.fetch = async function(...args) {
     const isLoginRequest = url.includes('/api/auth/login');
 
     if (response.status === 401 && !isLoginRequest) {
-      // Session Expired - Clear all potential auth keys
       localStorage.removeItem('pgp_token');
       localStorage.removeItem('pgp_role');
       localStorage.removeItem('pgp_branch');
@@ -53,7 +52,6 @@ window.fetch = async function(...args) {
         window.location.href = redirectUrl;
       }
     } else if (response.ok) {
-      // Perform schema & structure validation checks on response
       validateApiResponse(response, url);
     }
     return response;
@@ -76,16 +74,11 @@ async function validateApiResponse(response, url) {
         triggerUnexpectedToast();
         return;
       }
-      
       const pathOnly = url.split('?')[0];
       if (pathOnly.endsWith('/api/apprentices')) {
-        if (!Array.isArray(data.apprentices)) {
-          triggerUnexpectedToast();
-        }
+        if (!Array.isArray(data.apprentices)) triggerUnexpectedToast();
       } else if (/\/api\/apprentices\/[a-zA-Z0-9_-]+$/.test(pathOnly)) {
-        if (data.success && (!data.apprentice || typeof data.apprentice !== 'object')) {
-          triggerUnexpectedToast();
-        }
+        if (data.success && (!data.apprentice || typeof data.apprentice !== 'object')) triggerUnexpectedToast();
       }
     } else if (url.includes('/api/users')) {
       const cloned = response.clone();
@@ -94,25 +87,18 @@ async function validateApiResponse(response, url) {
         triggerUnexpectedToast();
         return;
       }
-      
       const pathOnly = url.split('?')[0];
       if (pathOnly.endsWith('/api/users')) {
-        if (!Array.isArray(data.users)) {
-          triggerUnexpectedToast();
-        }
+        if (!Array.isArray(data.users)) triggerUnexpectedToast();
       }
     } else if (url.includes('/api/reports/preview')) {
       const cloned = response.clone();
       const data = await cloned.json();
-      if (!data || typeof data !== 'object' || data.success === undefined || typeof data.count !== 'number') {
-        triggerUnexpectedToast();
-      }
+      if (!data || typeof data !== 'object' || data.success === undefined || typeof data.count !== 'number') triggerUnexpectedToast();
     } else if (url.includes('/api/reports/export')) {
       const cloned = response.clone();
       const blob = await cloned.blob();
-      if (!blob || blob.size === 0) {
-        triggerUnexpectedToast();
-      }
+      if (!blob || blob.size === 0) triggerUnexpectedToast();
     }
   } catch (err) {
     console.error('API Validation Error:', err);
@@ -132,13 +118,11 @@ function triggerUnexpectedToast() {
 // GLOBAL ERROR BOUNDARY OVERLAY (Slate premium design)
 // ============================================================
 window.addEventListener('error', (event) => {
-  // Ignore minor third-party resource load errors
   if (event.message && (event.message.includes('Script error') || event.message.includes('ResizeObserver'))) return;
   showErrorOverlay(event.error || new Error(event.message || 'Unknown Javascript error occurred.'));
 });
 
 window.addEventListener('unhandledrejection', (event) => {
-  // Ignore minor unhandled rejections that might not affect UI stability
   const reason = event.reason || 'Unhandled promise rejection';
   const reasonStr = typeof reason === 'object' ? (reason.message || '') : String(reason);
   if (reasonStr.includes('ResizeObserver') || reasonStr.includes('navigation')) return;
@@ -185,18 +169,12 @@ function showErrorOverlay(error) {
     </div>
     <h2 style="font-size: 22px; font-weight: 700; margin: 0 0 8px 0; color: #f1f5f9; letter-spacing: -0.025em;">Application Error</h2>
     <p style="color: #94a3b8; font-size: 15px; line-height: 1.6; margin: 0 0 24px 0;">An uncaught script error has crashed the interface. The system has paused to protect database integrity.</p>
-    
     <div style="background-color: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 16px; text-align: left; margin-bottom: 28px; max-height: 160px; overflow-y: auto;">
       <code style="font-family: 'Fira Code', 'Courier New', Courier, monospace; font-size: 12px; color: #f43f5e; word-break: break-all; white-space: pre-wrap;">${escapeHtml(error.stack || error.message || error)}</code>
     </div>
-    
     <div style="display: flex; gap: 12px; justify-content: center;">
-      <button onclick="window.location.reload()" style="background-color: #3b82f6; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2);">
-        Reload Portal
-      </button>
-      <button onclick="document.getElementById('error-boundary-overlay').remove()" style="background-color: transparent; border: 1px solid #475569; color: #94a3b8; padding: 12px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s;">
-        Dismiss
-      </button>
+      <button onclick="window.location.reload()" style="background-color: #3b82f6; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2);">Reload Portal</button>
+      <button onclick="document.getElementById('error-boundary-overlay').remove()" style="background-color: transparent; border: 1px solid #475569; color: #94a3b8; padding: 12px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s;">Dismiss</button>
     </div>
   `;
 
@@ -213,3 +191,55 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+
+// ============================================================
+// BUDGET UI — hide completed-apprentice counts only
+// No backend/data logic is changed.
+// ============================================================
+(function() {
+  function isBudgetPage() {
+    return /\/budget\.html$/i.test(window.location.pathname);
+  }
+
+  function hideBudgetCompletedUI() {
+    if (!isBudgetPage()) return;
+
+    var completedValue = document.getElementById('card-val-completed');
+    if (completedValue) {
+      var card = completedValue.closest('.budget-summary-card');
+      if (card) card.style.display = 'none';
+    }
+
+    document.querySelectorAll('#budget-location-overview-grid .budget-location-stat').forEach(function(stat) {
+      var label = stat.querySelector('span');
+      if (label && label.textContent.trim().toLowerCase() === 'completed') {
+        stat.style.display = 'none';
+      }
+    });
+
+    var table = document.getElementById('budget-dashboard-table');
+    if (table) {
+      Array.from(table.rows).forEach(function(row) {
+        Array.from(row.cells).forEach(function(cell) {
+          if (cell.textContent.trim().toLowerCase() === 'completed') {
+            cell.style.display = 'none';
+          }
+        });
+        if (row.cells.length >= 11) {
+          var completedCell = row.cells[10];
+          if (completedCell && completedCell.textContent.trim() !== '') {
+            completedCell.style.display = 'none';
+          }
+        }
+      });
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', hideBudgetCompletedUI);
+  if (document.readyState !== 'loading') hideBudgetCompletedUI();
+
+  if (isBudgetPage()) {
+    var observer = new MutationObserver(hideBudgetCompletedUI);
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+})();
