@@ -14,35 +14,7 @@ const sheetsService = require('./sheetsService');
 
 const APPRENTICE_TYPE_FIELD = 'Apprentice Type';
 
-const SEED_SECTION_BUDGETS = [
-  { section: 'Chemical Lab', plant: '145 TPD', dept: 'Quality Control', staffBudget: 1, workmenBudget: 0, staffActual: 1, workmenActual: 1 },
-  { section: 'Civil', plant: '145 TPD', dept: 'Civil & Infra', staffBudget: 2, workmenBudget: 0, staffActual: 1, workmenActual: 0 },
-  { section: 'Cold End', plant: '145 TPD', dept: 'Cold End Production', staffBudget: 2, workmenBudget: 5, staffActual: 2, workmenActual: 5 },
-  { section: 'CPP', plant: '145 TPD', dept: 'Power & Energy', staffBudget: 1, workmenBudget: 0, staffActual: 0, workmenActual: 0 },
-  { section: 'Digital', plant: '145 TPD', dept: 'IT & Digital', staffBudget: 2, workmenBudget: 0, staffActual: 2, workmenActual: 0 },
-  { section: 'Electrical', plant: '145 TPD', dept: 'Electrical & Automation', staffBudget: 5, workmenBudget: 4, staffActual: 3, workmenActual: 1 },
-  { section: 'Glass C&P', plant: '145 TPD', dept: 'Glass Production', staffBudget: 0, workmenBudget: 0, staffActual: 0, workmenActual: 1 },
-  { section: 'Glass F&P', plant: '145 TPD', dept: 'Glass Production', staffBudget: 0, workmenBudget: 0, staffActual: 0, workmenActual: 0 },
-  { section: 'HR, Admin & SHE', plant: '145 TPD', dept: 'Human Resources', staffBudget: 2, workmenBudget: 0, staffActual: 1, workmenActual: 0 },
-  { section: 'Instrument', plant: '145 TPD', dept: 'Instrumentation', staffBudget: 3, workmenBudget: 4, staffActual: 0, workmenActual: 3 },
-  { section: 'ISM C&P', plant: '145 TPD', dept: 'IS Machine Maintenance', staffBudget: 2, workmenBudget: 5, staffActual: 0, workmenActual: 4 },
-  { section: 'ISM F&P', plant: '145 TPD', dept: 'IS Machine Maintenance', staffBudget: 2, workmenBudget: 3, staffActual: 0, workmenActual: 0 },
-  { section: 'Logistics', plant: '145 TPD', dept: 'Supply Chain & Logistics', staffBudget: 1, workmenBudget: 0, staffActual: 1, workmenActual: 0 },
-  { section: 'MMFG', plant: '145 TPD', dept: 'Furnace & Batch', staffBudget: 3, workmenBudget: 3, staffActual: 0, workmenActual: 2 },
-  { section: 'MRS C&P', plant: '145 TPD', dept: 'Mold Repair Shop', staffBudget: 3, workmenBudget: 4, staffActual: 1, workmenActual: 4 },
-  { section: 'MRS F&P', plant: '145 TPD', dept: 'Mold Repair Shop', staffBudget: 1, workmenBudget: 3, staffActual: 0, workmenActual: 3 },
-  { section: 'Plant Maint. C&P', plant: '145 TPD', dept: 'Plant Maintenance', staffBudget: 1, workmenBudget: 5, staffActual: 1, workmenActual: 1 },
-  { section: 'Plant Maint. F&P', plant: '145 TPD', dept: 'Plant Maintenance', staffBudget: 1, workmenBudget: 2, staffActual: 1, workmenActual: 0 },
-  { section: 'Production F&P', plant: '145 TPD', dept: 'Production', staffBudget: 3, workmenBudget: 6, staffActual: 1, workmenActual: 0 },
-  { section: 'Production C&P', plant: '145 TPD', dept: 'Production', staffBudget: 10, workmenBudget: 15, staffActual: 1, workmenActual: 1 },
-  { section: 'QA C&P', plant: '145 TPD', dept: 'Quality Assurance', staffBudget: 1, workmenBudget: 2, staffActual: 0, workmenActual: 0 },
-  { section: 'QA F&P', plant: '145 TPD', dept: 'Quality Assurance', staffBudget: 1, workmenBudget: 5, staffActual: 0, workmenActual: 0 },
-  { section: 'QC C&P', plant: '145 TPD', dept: 'Quality Control', staffBudget: 6, workmenBudget: 20, staffActual: 7, workmenActual: 8 },
-  { section: 'QC F&P', plant: '145 TPD', dept: 'Quality Control', staffBudget: 2, workmenBudget: 5, staffActual: 3, workmenActual: 1 },
-  { section: 'Stores', plant: '145 TPD', dept: 'Materials & Stores', staffBudget: 1, workmenBudget: 1, staffActual: 0, workmenActual: 0 },
-  { section: 'TTC', plant: '145 TPD', dept: 'Technical Training Center', staffBudget: 2, workmenBudget: 0, staffActual: 2, workmenActual: 0 },
-  { section: 'Utility', plant: '145 TPD', dept: 'Plant Utility & Services', staffBudget: 3, workmenBudget: 4, staffActual: 2, workmenActual: 3 }
-];
+const SEED_SECTION_BUDGETS = [];
 
 function getUserDisplay(user) {
   if (!user) return 'System';
@@ -56,34 +28,13 @@ function generateBudgetId() {
 }
 
 /**
- * Ensure seed budget rows exist in Google Sheets database if sheet is empty.
+ * Reads budget sheet rows directly from Google Sheets database.
+ * Automatic seeding has been completely removed. If Department_Budget is empty,
+ * it returns an empty array without creating or inserting any fallback rows.
  */
-async function ensureSeedBudgetsExist() {
+async function getBudgetSheetRecords() {
   const rows = await sheetsService.getBudgetSheet();
-  if (rows && rows.length > 0) return rows;
-
-  const nowStr = new Date().toISOString().split('T')[0];
-  const seededRows = SEED_SECTION_BUDGETS.map(function(s, idx) {
-    return {
-      'Budget ID':      'BDG-' + (100001 + idx),
-      'Location':       'Kosamba',
-      'Plant':          s.plant,
-      'Department':     s.dept,
-      'Section':        s.section,
-      'Staff Budget':   String(s.staffBudget),
-      'Workmen Budget': String(s.workmenBudget),
-      'Date From':      '2026-01-01',
-      'Date To':        '2026-12-31',
-      'Status':         'ACTIVE',
-      'Created By':     'System Seed',
-      'Created Date':   nowStr,
-      'Updated By':     'System Seed',
-      'Updated Date':   nowStr
-    };
-  });
-
-  await sheetsService.saveBudgetSheet(seededRows);
-  return seededRows;
+  return rows || [];
 }
 
 /**
@@ -200,9 +151,9 @@ async function getBudgetDashboard(filters) {
   const secFilter   = (filters.section    || '').trim().toLowerCase();
   const searchFilter= (filters.search     || '').trim().toLowerCase();
 
-  // V3: Fetch active + completed in single parallel call
+  // V3: Fetch active + completed + budget in single parallel call
   const results = await Promise.all([
-    ensureSeedBudgetsExist(),
+    sheetsService.getBudgetSheet(),
     sheetsService.getActiveApprentices(),
     sheetsService.getCompletedApprentices()
   ]);
@@ -394,7 +345,7 @@ async function getBudgetConfiguration(options) {
   const secFilter    = (options.section    || '').trim().toLowerCase();
   const search       = (options.search     || '').trim().toLowerCase();
 
-  const budgetRows = await ensureSeedBudgetsExist();
+  const budgetRows = await sheetsService.getBudgetSheet();
 
   const result = [];
   (budgetRows || []).forEach(function(row) {
@@ -474,7 +425,7 @@ async function createBudget(data, user) {
     throw new Error('Date To cannot be before Date From.');
   }
 
-  const rows = await ensureSeedBudgetsExist();
+  const rows = await sheetsService.getBudgetSheet();
   const existingIndex = rows.findIndex(function(r) {
     return String(r['Location']   || '').trim().toLowerCase() === loc.toLowerCase() &&
            String(r['Plant']      || '').trim().toLowerCase() === plant.toLowerCase() &&
@@ -542,7 +493,7 @@ async function createBudget(data, user) {
 async function updateBudget(budgetId, updates, user) {
   if (!budgetId) throw new Error('Budget ID is required.');
 
-  const rows = await ensureSeedBudgetsExist();
+  const rows = await sheetsService.getBudgetSheet();
   const index = rows.findIndex(function(r) {
     return String(r['Budget ID'] || '').trim() === String(budgetId).trim();
   });
@@ -620,7 +571,7 @@ async function duplicateBudget(sourceBudgetId, targetLocation, user) {
   const targetLoc = String(targetLocation || '').trim();
   if (!targetLoc) throw new Error('Target Location is required.');
 
-  const rows = await ensureSeedBudgetsExist();
+  const rows = await sheetsService.getBudgetSheet();
   const source = rows.find(function(r) {
     return String(r['Budget ID'] || '').trim() === String(sourceBudgetId).trim();
   });
@@ -692,43 +643,71 @@ async function importBudgets(importRows, user) {
 
   let createdCount = 0;
   let updatedCount = 0;
+  const rows = await sheetsService.getBudgetSheet();
+  const nowStr   = new Date().toISOString().split('T')[0];
+  const nowIso   = new Date().toISOString();
+  const userDisp = getUserDisplay(user);
 
   for (let i = 0; i < importRows.length; i++) {
-    const item = importRows[i];
-    const loc  = String(item.Location   || item.location   || 'Kosamba').trim();
-    const plant= String(item.Plant      || item.plant      || '145 TPD').trim();
-    const dept = String(item.Department || item.department || '').trim();
-    const sec  = String(item.Section    || item.section    || dept).trim();
+    const item  = importRows[i];
+    const loc   = String(item.Location   || item.location   || 'Kosamba').trim();
+    const plant = String(item.Plant      || item.plant      || '145 TPD').trim();
+    const dept  = String(item.Department || item.department || '').trim();
+    const sec   = String(item.Section    || item.section    || dept).trim();
     const staff = parseInt(item['Staff Budget']   || item.staffBudget)   || 0;
     const wrk   = parseInt(item['Workmen Budget'] || item.workmenBudget) || 0;
 
     if (!sec) continue;
 
-    const existingRows = await ensureSeedBudgetsExist();
-    const existing = existingRows.find(function(r) {
+    const existingIndex = rows.findIndex(function(r) {
       return String(r['Location'] || '').trim().toLowerCase() === loc.toLowerCase() &&
              String(r['Section']  || r['Department'] || '').trim().toLowerCase() === sec.toLowerCase();
     });
 
-    if (existing) {
-      await updateBudget(existing['Budget ID'], {
-        staffBudget:   staff,
-        workmenBudget: wrk
-      }, user);
+    if (existingIndex !== -1) {
+      rows[existingIndex] = Object.assign({}, rows[existingIndex], {
+        'Staff Budget':   String(staff),
+        'Workmen Budget': String(wrk),
+        'Updated By':     userDisp,
+        'Updated Date':   nowStr
+      });
       updatedCount++;
     } else {
-      await createBudget({
-        location:      loc,
-        plant:         plant,
-        department:    dept || sec,
-        section:       sec,
-        staffBudget:   staff,
-        workmenBudget: wrk,
-        status:        'ACTIVE'
-      }, user);
+      rows.push({
+        'Budget ID':      generateBudgetId(),
+        'Location':       loc,
+        'Plant':          plant,
+        'Department':     dept || sec,
+        'Section':        sec,
+        'Staff Budget':   String(staff),
+        'Workmen Budget': String(wrk),
+        'Date From':      '2026-01-01',
+        'Date To':        '2026-12-31',
+        'Status':         'ACTIVE',
+        'Created By':     userDisp,
+        'Created Date':   nowStr,
+        'Updated By':     userDisp,
+        'Updated Date':   nowStr
+      });
       createdCount++;
     }
   }
+
+  await sheetsService.saveBudgetSheet(rows);
+
+  await sheetsService.appendBudgetAuditLog({
+    timestamp:        nowIso,
+    user:             userDisp,
+    action:           'Bulk Budget Import',
+    location:         'All',
+    department:       `Imported ${createdCount} new, ${updatedCount} updated`,
+    oldStaffBudget:   0,
+    newStaffBudget:   0,
+    oldWorkmenBudget: 0,
+    newWorkmenBudget: 0,
+    oldStatus:        'NONE',
+    newStatus:        'ACTIVE'
+  });
 
   return { created: createdCount, updated: updatedCount, total: createdCount + updatedCount };
 }
@@ -752,6 +731,5 @@ module.exports = {
   calculateSectionActuals,
   calculateSectionStatus,
   calculateCompletedByLocation,
-  calculateCompletedBySection,
-  ensureSeedBudgetsExist
+  calculateCompletedBySection
 };

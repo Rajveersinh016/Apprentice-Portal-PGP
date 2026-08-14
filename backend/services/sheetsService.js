@@ -2182,17 +2182,32 @@ async function getBudgetSheet() {
  * Invalidates budget cache after write.
  */
 async function saveBudgetSheet(rows) {
+  console.log('[BUDGET-WRITE]', {
+    operation: 'saveBudgetSheet',
+    rowsCount: rows ? rows.length : 0,
+    firstBudgetId: rows && rows.length > 0 ? rows[0]['Budget ID'] : null,
+    lastBudgetId: rows && rows.length > 0 ? rows[rows.length - 1]['Budget ID'] : null,
+    timestamp: new Date().toISOString(),
+    stack: new Error().stack
+  });
   const release = await dbMutex.acquire();
   try {
     const client = getSheetsClient();
-    const values = [BUDGET_HEADERS, ...rows.map(r => BUDGET_HEADERS.map(h => sanitizeCellValue(r[h] !== undefined ? r[h] : '')))];
-    await executeWithRetry(() => client.spreadsheets.values.update({
+    // First clear all existing data rows A2:ZZ10000 to handle complete deletion or row count shrinkage
+    await executeWithRetry(() => client.spreadsheets.values.clear({
       spreadsheetId,
-      range: `Department_Budget!A1:N${values.length}`,
-      valueInputOption: 'RAW',
-      requestBody: { values }
+      range: 'Department_Budget!A2:ZZ10000'
     }));
-    // Clear rows beyond the written range (handle row shrinkage if needed)
+
+    if (rows && rows.length > 0) {
+      const values = [BUDGET_HEADERS, ...rows.map(r => BUDGET_HEADERS.map(h => sanitizeCellValue(r[h] !== undefined ? r[h] : '')))];
+      await executeWithRetry(() => client.spreadsheets.values.update({
+        spreadsheetId,
+        range: `Department_Budget!A1:N${values.length}`,
+        valueInputOption: 'RAW',
+        requestBody: { values }
+      }));
+    }
     dataCache.budget.data = null;
     dataCache.budget.ts   = 0;
   } finally {

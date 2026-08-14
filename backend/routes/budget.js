@@ -24,6 +24,8 @@ const authMiddleware = require('../middleware/auth');
 const budgetService  = require('../services/budgetService');
 const { requestStorage } = require('../utils/logger');
 
+const sheetsService   = require('../services/sheetsService');
+
 function setRecordCount(n) {
   const store = requestStorage.getStore();
   if (store) store.recordCount = n;
@@ -43,6 +45,9 @@ function checkSuperHR(req, res) {
 // ── GET /api/budget (Dashboard) ──────────────────────────────────────────────
 router.get('/', authMiddleware, async function(req, res) {
   try {
+    if (req.query.refresh === 'true') {
+      sheetsService.invalidateDataCache();
+    }
     const filters = {
       location:   req.query.location,
       plant:      req.query.plant,
@@ -67,6 +72,9 @@ router.get('/', authMiddleware, async function(req, res) {
 // ── GET /api/budget/config (Master Budget Configuration) ────────────────────
 router.get('/config', authMiddleware, async function(req, res) {
   try {
+    if (req.query.refresh === 'true') {
+      sheetsService.invalidateDataCache();
+    }
     const options = {
       showInactive: req.query.showInactive,
       location:     req.query.location,
