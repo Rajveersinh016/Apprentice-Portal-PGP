@@ -446,6 +446,12 @@ async function ensureSheetsExistInternal() {
     }
   ];
 
+  const missingSheets = requiredSheets.filter(req => !sheetNames.includes(req.name));
+  if (missingSheets.length === 0) {
+    // All 8 database tabs exist — serverless startup optimization (1 API call instead of 9)
+    return;
+  }
+
   for (const req of requiredSheets) {
     if (!sheetNames.includes(req.name)) {
       await executeWithRetry(() => client.spreadsheets.batchUpdate({

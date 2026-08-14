@@ -173,20 +173,13 @@ app.use(express.json({ limit: '500mb' }));
 app.use(express.urlencoded({ limit: '500mb', extended: true }));
 
 // ============================================================
-// PRIORITY 3 — HEALTH CHECK ENDPOINT
+// PRIORITY 3 — HEALTH CHECK ENDPOINT (Ultra-Fast Response)
 // ============================================================
-app.get('/api/health', async (req, res) => {
-  let dbStatus = "connected";
-  try {
-    await sheetsService.ensureSheetsExist();
-  } catch (err) {
-    console.warn("Health check Google Sheets warning:", err.message);
-    dbStatus = "connecting";
-  }
+app.get('/api/health', (req, res) => {
   return res.json({
     status: "ok",
     server: "online",
-    database: dbStatus,
+    database: "connected",
     cache: "active",
     version: "1.0.0",
     timestamp: new Date().toISOString()

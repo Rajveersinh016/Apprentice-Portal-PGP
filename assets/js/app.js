@@ -22,12 +22,20 @@
       const customUrl = localStorage.getItem('pgp_google_apps_script_url');
       if (customUrl && customUrl.trim()) {
         backendUrl = customUrl.trim().replace(/\/$/, '');
-      } else if (window.location.port === '3001') {
-        backendUrl = window.location.origin;
       } else {
-        const protocol = window.location.protocol || 'http:';
-        const host = window.location.hostname || 'localhost';
-        backendUrl = `${protocol}//${host}:3001`;
+        const isLocal = window.location.hostname === 'localhost' ||
+                        window.location.hostname === '127.0.0.1' ||
+                        window.location.hostname === '[::1]' ||
+                        window.location.hostname === '::1';
+        if (!isLocal) {
+          backendUrl = window.location.origin;
+        } else if (window.location.port === '3001') {
+          backendUrl = window.location.origin;
+        } else {
+          const protocol = window.location.protocol || 'http:';
+          const host = window.location.hostname || 'localhost';
+          backendUrl = `${protocol}//${host}:3001`;
+        }
       }
     }
 
@@ -297,6 +305,11 @@ const AppDB = {
   getBackendUrl() {
     const customUrl = localStorage.getItem('pgp_google_apps_script_url');
     if (customUrl && customUrl.trim()) return customUrl.trim().replace(/\/$/, '');
+    const isLocal = window.location.hostname === 'localhost' ||
+                    window.location.hostname === '127.0.0.1' ||
+                    window.location.hostname === '[::1]' ||
+                    window.location.hostname === '::1';
+    if (!isLocal) return window.location.origin;
     if (window.location.port === '3001') return window.location.origin;
     const protocol = window.location.protocol || 'http:';
     const host = window.location.hostname || 'localhost';
@@ -305,6 +318,13 @@ const AppDB = {
 
   // ── Helper: fallback URL for alternative localhost hostname (localhost <-> 127.0.0.1)
   getFallbackBackendUrl() {
+    const customUrl = localStorage.getItem('pgp_google_apps_script_url');
+    if (customUrl && customUrl.trim()) return customUrl.trim().replace(/\/$/, '');
+    const isLocal = window.location.hostname === 'localhost' ||
+                    window.location.hostname === '127.0.0.1' ||
+                    window.location.hostname === '[::1]' ||
+                    window.location.hostname === '::1';
+    if (!isLocal) return window.location.origin;
     if (window.location.port === '3001') return window.location.origin;
     const protocol = window.location.protocol || 'http:';
     const host = window.location.hostname;
